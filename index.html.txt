@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Management Dashboard</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="description" content="Sistem Manajemen Plant dan Rekapan Produksi">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --brand-primary: #1e3a8a;
+            --brand-secondary: #f59e0b;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .tab-content.active { display: block; opacity: 1; animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUpFade { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        .card-panel {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            border: 1px solid #f1f5f9;
+        }
+
+        .table-container { 
+            border-radius: 0.75rem; 
+            overflow: auto; 
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); 
+            border: 1px solid #e2e8f0; 
+            background: white;
+        }
+        
+        table { border-collapse: separate; border-spacing: 0; width: 100%; background: white;}
+        th, td { 
+            border-bottom: 1px solid #e2e8f0; 
+            border-right: 1px solid #e2e8f0; 
+            padding: 0.75rem; 
+            text-align: center; 
+        }
+        th:last-child, td:last-child { border-right: none; }
+        
+        th { 
+            background-color: #f8fafc; 
+            font-weight: 600; 
+            color: #475569; 
+            position: sticky; 
+            top: 0; 
+            z-index: 5;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        tbody tr { transition: background-color 0.15s; }
+        tbody tr:hover { background-color: #f8fafc; }
+        .total-row td { font-weight: 700; background-color: #eff6ff; color: #1e3a8a; border-top: 2px solid #bfdbfe; }
+        
+        .product-col { 
+            text-align: left !important; 
+            font-weight: 600; 
+            color: #1e293b; 
+            position: sticky; 
+            left: 0; 
+            background: white;
+            z-index: 10; 
+            min-width: 130px; 
+            max-width: 200px;
+            white-space: normal !important; 
+            word-wrap: break-word; 
+            line-height: 1.3;
+            box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+        }
+        thead th.product-col { z-index: 20; background-color: #f8fafc; }
+        tr:hover .product-col { background-color: #f8fafc; }
+        .total-row .product-col { background-color: #eff6ff; }
+        
+        @media (min-width: 768px) {
+            .product-col { min-width: 220px; max-width: 300px; }
+            th, td { padding: 0.875rem 1rem; }
+        }
+
+        .table-super-compact { width: 100%; }
+        .table-super-compact th { padding: 4px 6px !important; font-size: 10px !important; background-color: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1; white-space: nowrap; }
+        .table-super-compact td { padding: 4px 6px !important; font-size: 11px !important; line-height: 1.2 !important; white-space: normal !important; word-break: break-word; border-bottom: 1px solid #e2e8f0; }
+        .table-super-compact td:nth-child(1) { text-align: center; font-weight: 700; color: #0f172a; width: 40px; background-color: #f8fafc; }
+        .table-super-compact td:nth-child(2) { font-weight: 600; color: #334155; text-align: left;}
+        .table-super-compact td:nth-child(3) { font-weight: 700; color: #0f766e; text-align: right; white-space: nowrap !important; width: 80px;}
+        
+        @media (min-width: 768px) {
+            .table-super-compact td { font-size: 13px !important; padding: 6px 10px !important; }
+            .table-super-compact td:nth-child(1) { width: 60px; }
+            .table-super-compact td:nth-child(3) { width: 120px; }
+        }
+
+        .table-compact th, .table-compact td { padding: 0.5rem 0.75rem !important; font-size: 0.75rem !important; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media (min-width: 768px) { ::-webkit-scrollbar { width: 8px; height: 8px; } }
+        
+        #loader { display: none; }
+        #loader.active { display: flex; }
+
+        .record-list-container { display: flex; flex-direction: column; gap: 0.5rem; }
+        .record-item {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            padding: 1rem;
+            background-color: white;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            align-items: start;
+            transition: all 0.2s;
+            border: 1px solid #f1f5f9;
+        }
+        .record-item:hover { background-color: #f8fafc; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        @media (min-width: 768px) {
+            .record-item {
+                grid-template-columns: 1.2fr 2fr 1fr 1.5fr 1.5fr;
+                gap: 1rem;
+                align-items: center;
+                border-bottom: 1px solid #e2e8f0;
+                border-radius: 0;
+                border: none;
+            }
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-header-row { display: none; }
+        @media (min-width: 768px) {
+            .record-header-row {
+                display: grid;
+                grid-template-columns: 1.2fr 2fr 1fr 1.5fr 1.5fr;
+                gap: 1rem;
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid #cbd5e1;
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                font-size: 0.7rem;
+                letter-spacing: 0.05em;
+            }
+        }
+        .badge-shift {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.025em;
+            margin-top: 0.25rem;
+        }
+        
+        .segmented-control {
+            display: flex; background-color: #e2e8f0; padding: 0.25rem; border-radius: 0.5rem;
+        }
+        .segmented-btn {
+            flex: 1; text-align: center; padding: 0.375rem 1rem; font-size: 0.875rem; font-weight: 600; border-radius: 0.375rem; transition: all 0.2s ease; color: #64748b;
+        }
+        .segmented-btn.active { background-color: white; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        .modern-input {
+            width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; background-color: #f8fafc; transition: all 0.2s; color: #1e293b;
+        }
+        .modern-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .modern-label { display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.025em; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-800 selection:bg-blue-100 selection:text-blue-900">
+
+    <datalist id="list-giling-products"></datalist>
+    <datalist id="klasifikasi-list">
+        <option value="MC Tinggi(Rasa Tidak Standard)"></option><option value="BLACKSPOT"></option>
+        <option value="WARNA BELANG"></option><option value="WARNA PUCAT"></option>
+        <option value="WARNA GELAP/KETUAAN"></option><option value="BANTAT/TEBAL"></option>
+        <option value="ORNAMEN NGACAK"></option><option value="DIMENSI TIDAK STANDARD"></option>
+        <option value="MELENGKUNG"></option><option value="MELIPAT/JARING-JARING"></option>
+        <option value="SALURAN TIDAK RATA"></option><option value="GULA TIDAK MELTING"></option>
+        <option value="BERAT UNDER"></option><option value="TIPIS"></option>
+        <option value="DEMPET"></option><option value="GREPES"></option>
+        <option value="BAKARAN"></option><option value="JATUH KE LANTAI"></option>
+        <option value="GOSONG"></option><option value="KONTAMINASI"></option>
+    </datalist>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden md:hidden transition-opacity" onclick="toggleSidebar()"></div>
+
+    <aside id="sidebar" class="w-64 md:w-[260px] bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 fixed md:relative z-40 h-full transform -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+        <div class="h-16 flex items-center justify-between px-5 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shadow-sm border border-amber-100">
+                    <i class="fa-solid fa-industry text-amber-500 text-lg"></i>
+                </div>
+                <div class="leading-tight">
+                    <h1 class="text-sm font-black text-slate-800 tracking-tight">PLANT PORTAL</h1>
+                    <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Management System</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-700 p-2"><i class="fa-solid fa-times text-lg"></i></button>
+        </div>
+        
+        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <div class="pt-2 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rekapan Data</div>
+            <button onclick="switchTab('dash-minyak'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="dash-minyak">
+                <i class="fa-solid fa-oil-can w-5 text-center"></i> Rekapan Minyak
+            </button>
+            <button onclick="switchTab('dash-bubuk'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn active-nav w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" data-target="dash-bubuk">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i> Dashboard Bubuk
+            </button>
+            <button onclick="switchTab('dash-giling'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="dash-giling">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Rekapan Giling
+            </button>
+            <button onclick="switchTab('dash-waste'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="dash-waste">
+                <i class="fa-solid fa-dumpster w-5 text-center"></i> Rekapan Waste
+            </button>
+            
+            <div class="pt-5 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Planning</div>
+            <button onclick="switchTab('planning-view'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="planning-view">
+                <i class="fa-solid fa-table-list w-5 text-center"></i> Info Planning
+            </button>
+            
+            <div class="pt-5 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Daily Input</div>
+            <button onclick="switchTab('minyak-input'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="minyak-input">
+                <i class="fa-solid fa-droplet w-5 text-center"></i> Daily Minyak
+            </button>
+            <button onclick="switchTab('bubuk-input'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="bubuk-input">
+                <i class="fa-solid fa-box-open w-5 text-center"></i> Daily Bubuk
+            </button>
+            <button onclick="switchTab('giling-input'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="giling-input">
+                <i class="fa-solid fa-mortar-pestle w-5 text-center"></i> Daily Giling
+            </button>
+            <button onclick="switchTab('waste-input'); if(window.innerWidth < 768) toggleSidebar();" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" data-target="waste-input">
+                <i class="fa-solid fa-trash-can w-5 text-center"></i> Daily Waste
+            </button>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-100 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><i class="fa-solid fa-user text-xs"></i></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-slate-800 truncate">Administrator</p>
+                <p class="text-[10px] text-slate-500 truncate">Plant Management</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden relative w-full bg-slate-50/50">
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-6 h-16 flex justify-between items-center z-20 sticky top-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors"><i class="fa-solid fa-bars"></i></button>
+                <h2 id="page-title" class="text-base md:text-lg font-bold text-slate-800 truncate tracking-tight">Dashboard Bubuk</h2>
+            </div>
+            
+            <div id="plant-selector-container" class="segmented-control w-auto">
+                <button onclick="setGlobalPlant('1112')" id="btn-plant-1112" class="segmented-btn active">Plant 1112</button>
+                <button onclick="setGlobalPlant('1113')" id="btn-plant-1113" class="segmented-btn">Plant 1113</button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-3 md:p-6 relative">
+            <div id="loader" class="absolute inset-0 bg-slate-50/80 z-50 items-center justify-center backdrop-blur-sm">
+                <div class="flex flex-col items-center bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                    <div class="w-10 h-10 border-3 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 text-sm font-semibold text-slate-600" id="loader-text">Memproses data...</p>
+                </div>
+            </div>
+
+            <!-- TAB REKAPAN MINYAK (BARU) -->
+            <div id="dash-minyak" class="tab-content space-y-4 md:space-y-6 w-full max-w-full lg:max-w-7xl mx-auto">
+                <div class="card-panel p-4 md:p-6">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold text-slate-800">Riwayat Bon Minyak</h3>
+                                <p class="text-xs text-slate-500 font-medium">Rekapitulasi penerimaan minyak Plant <span class="plant-label">1112</span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto">
+                            <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 flex-1 sm:flex-none">
+                                <input type="date" id="minyak-start-date" onchange="applyMinyakFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                                <span class="text-slate-300 px-1"><i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                                <input type="date" id="minyak-end-date" onchange="applyMinyakFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                            </div>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="loadDashMinyak()" class="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                                <button onclick="shareWAMinyak()" class="flex-1 sm:flex-none px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-brands fa-whatsapp text-sm"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                        <div class="p-4 bg-gradient-to-br from-amber-50 to-white border border-amber-100 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Total (KG)</p>
+                            <p id="minyak-grand-total" class="text-2xl md:text-3xl font-black text-slate-800">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 1</p>
+                            <p id="minyak-shift1-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 2</p>
+                            <p id="minyak-shift2-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 3</p>
+                            <p id="minyak-shift3-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div class="record-header-row bg-slate-50">
+                            <div>Waktu / Shift</div>
+                            <div>Nama Minyak</div>
+                            <div>Jumlah (Kg)</div>
+                            <div>Supplier / Grup</div>
+                            <div>Catatan</div>
+                        </div>
+                        <div id="minyak-list-container" class="record-list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB BUBUK -->
+            <div id="dash-bubuk" class="tab-content active space-y-4 md:space-y-6 w-full max-w-full lg:max-w-7xl mx-auto">
+                <div class="card-panel p-4 md:p-6">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 md:mb-6">
+                        <div class="hidden sm:flex w-10 h-10 rounded-lg bg-blue-50 items-center justify-center border border-blue-100">
+                            <i class="fa-solid fa-chart-column text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base md:text-lg font-bold text-slate-800">Jumlah Semua Bubuk Mingguan</h3>
+                            <p class="text-xs text-slate-500 font-medium">Plant <span class="plant-label">1112</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full h-[250px] md:h-[350px] p-2 bg-white rounded-xl border border-slate-100 mb-6">
+                        <canvas id="bubukChart"></canvas>
+                    </div>
+
+                    <div class="table-container overflow-x-auto max-h-[400px] md:max-h-[500px] mb-8">
+                        <table id="bubuk-dashboard-table" class="min-w-full">
+                            <thead id="bubuk-dashboard-thead"></thead>
+                            <tbody id="bubuk-dashboard-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- REKAPAN BON BUBUK HARIAN -->
+                    <div class="border-t border-slate-200 pt-6">
+                        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold text-slate-800">Rekapan Bon Bubuk</h3>
+                                <p class="text-xs text-slate-500 font-medium">Data pemasukan harian</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto">
+                                <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 flex-1 sm:flex-none">
+                                    <input type="date" id="bubuk-start-date" onchange="applyBubukListFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                                    <span class="text-slate-300 px-1"><i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                                    <input type="date" id="bubuk-end-date" onchange="applyBubukListFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                                </div>
+                                <div class="flex gap-2 w-full sm:w-auto">
+                                    <button onclick="shareWABubukList()" class="flex-1 sm:flex-none px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                        <i class="fa-brands fa-whatsapp text-sm"></i> Share Rekapan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                            <div class="p-4 bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-xl shadow-sm">
+                                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Total Pemasukan</p>
+                                <p id="bubuk-list-grand-total" class="text-2xl md:text-3xl font-black text-slate-800">0</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <div class="record-header-row bg-slate-50">
+                                <div>Waktu / Shift</div>
+                                <div>Nama Bubuk</div>
+                                <div>Jumlah (Kg)</div>
+                                <div>Line / Detail</div>
+                                <div>Catatan</div>
+                            </div>
+                            <div id="bubuk-list-container" class="record-list-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB GILING -->
+            <div id="dash-giling" class="tab-content space-y-4 md:space-y-6 w-full max-w-full lg:max-w-7xl mx-auto">
+                <div class="card-panel p-4 md:p-6">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold text-slate-800">Riwayat Gilingan</h3>
+                                <p class="text-xs text-slate-500 font-medium">Rekapitulasi produksi giling</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto">
+                            <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 flex-1 sm:flex-none">
+                                <input type="date" id="giling-start-date" onchange="applyGilingFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                                <span class="text-slate-300 px-1"><i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                                <input type="date" id="giling-end-date" onchange="applyGilingFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                            </div>
+
+                            <select id="giling-group-filter" onchange="applyGilingFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-purple-400">
+                                <option value="All">Semua Grup</option>
+                                <option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option>
+                            </select>
+                            
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="loadDashGiling()" class="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                                <button onclick="shareWAGiling()" class="flex-1 sm:flex-none px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-brands fa-whatsapp text-sm"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                        <div class="p-4 bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1">Total (KG)</p>
+                            <p id="giling-grand-total" class="text-2xl md:text-3xl font-black text-slate-800">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 1</p>
+                            <p id="giling-shift1-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 2</p>
+                            <p id="giling-shift2-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 3</p>
+                            <p id="giling-shift3-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div class="record-header-row bg-slate-50">
+                            <div>Waktu / Shift</div>
+                            <div>Produk</div>
+                            <div>Jumlah (Kg)</div>
+                            <div>Detail Operasional</div>
+                            <div>Catatan</div>
+                        </div>
+                        <div id="giling-list-container" class="record-list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB WASTE -->
+            <div id="dash-waste" class="tab-content space-y-4 md:space-y-6 w-full max-w-full lg:max-w-7xl mx-auto">
+                <div class="card-panel p-4 md:p-6">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold text-slate-800">Riwayat Waste</h3>
+                                <p class="text-xs text-slate-500 font-medium">Rekapitulasi pembuangan</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto">
+                            <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 flex-1 sm:flex-none">
+                                <input type="date" id="waste-start-date" onchange="applyWasteFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                                <span class="text-slate-300 px-1"><i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                                <input type="date" id="waste-end-date" onchange="applyWasteFilters()" class="w-full sm:w-auto px-2 py-1.5 bg-transparent outline-none text-xs font-semibold text-slate-700">
+                            </div>
+                            <select id="waste-dash-line-filter" onchange="applyWasteFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-red-400">
+                                <option value="All">Semua Line</option>
+                                <option value="Line 1">Line 1</option><option value="Line 2">Line 2</option>
+                                <option value="Line 3">Line 3</option><option value="Line 4">Line 4</option><option value="Line 5">Line 5</option>
+                            </select>
+                            <select id="waste-dash-group-filter" onchange="applyWasteFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-red-400">
+                                <option value="All">Semua Grup</option>
+                                <option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option>
+                            </select>
+
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="loadDashWaste()" class="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                                <button onclick="shareWAWaste()" class="flex-1 sm:flex-none px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i class="fa-brands fa-whatsapp text-sm"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                        <div class="p-4 bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1">Total (KG)</p>
+                            <p id="waste-grand-total" class="text-2xl md:text-3xl font-black text-slate-800">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 1</p>
+                            <p id="waste-shift1-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 2</p>
+                            <p id="waste-shift2-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shift 3</p>
+                            <p id="waste-shift3-total" class="text-xl md:text-2xl font-bold text-slate-700">0</p>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div class="record-header-row bg-slate-50">
+                            <div>Waktu / Shift</div>
+                            <div>Produk (Klasifikasi)</div>
+                            <div>Jumlah (Kg)</div>
+                            <div>Lokasi / Group</div>
+                            <div>Catatan</div>
+                        </div>
+                        <div id="waste-list-container" class="record-list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFO PLANNING -->
+            <div id="planning-view" class="tab-content max-w-full lg:max-w-5xl mx-auto">
+                <div class="card-panel p-3 md:p-5">
+                    <div class="flex flex-wrap justify-between items-center mb-3 border-b border-slate-100 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-teal-600"></i>
+                            <h3 class="text-sm md:text-base font-bold text-slate-800">Material Planning Plant <span class="plant-label">1112</span></h3>
+                        </div>
+                        <button onclick="loadPlanningData()" class="px-3 py-1.5 bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 rounded text-xs font-bold transition-colors">
+                            <i class="fa-solid fa-rotate-right mr-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="table-container overflow-x-auto max-h-[65vh] border-none shadow-none bg-transparent">
+                        <table id="planning-table" class="table-super-compact">
+                            <thead id="planning-thead"></thead>
+                            <tbody id="planning-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INPUT MINYAK (BARU) -->
+            <div id="minyak-input" class="tab-content max-w-full lg:max-w-4xl mx-auto">
+                <div class="card-panel p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600"><i class="fa-solid fa-droplet"></i></div>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Input Daily Bon Minyak - Plant <span class="plant-label">1112</span></h3>
+                    </div>
+                    
+                    <form onsubmit="submitForm(event, 'minyak')" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div><label class="modern-label">Tanggal</label><input type="date" id="m-date" required class="modern-input"></div>
+                            <div><label class="modern-label">Shift</label><select id="m-shift" required class="modern-input"><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option></select></div>
+                            <div><label class="modern-label">Grup</label><select id="m-grup" required class="modern-input"><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option></select></div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-bold text-slate-700">Detail Minyak Diterima</h4>
+                            </div>
+                            <div id="minyak-rows-container" class="space-y-3"></div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 gap-3">
+                            <button type="button" onclick="addMinyakRow()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors border border-slate-200"><i class="fa-solid fa-plus mr-1"></i> Tambah Baris</button>
+                            <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-sm text-sm transition-colors">Simpan Data Minyak</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- INPUT BUBUK -->
+            <div id="bubuk-input" class="tab-content max-w-full lg:max-w-4xl mx-auto">
+                <div class="card-panel p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600"><i class="fa-solid fa-box-open"></i></div>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Input Daily Bon Bubuk - <span class="plant-label">1112</span></h3>
+                    </div>
+                    
+                    <form onsubmit="submitForm(event, 'bubuk')" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div><label class="modern-label">Tanggal</label><input type="date" id="b-date" required class="modern-input"></div>
+                            <div><label class="modern-label">Shift</label><select id="b-shift" required class="modern-input"><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option></select></div>
+                            <div><label class="modern-label">Grup</label><select id="b-grup" required class="modern-input"><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option></select></div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-bold text-slate-700">Detail Pemasukan Bubuk</h4>
+                            </div>
+                            <div id="bubuk-rows-container" class="space-y-3"></div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 gap-3">
+                            <button type="button" onclick="addBubukRow()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors border border-slate-200"><i class="fa-solid fa-plus mr-1"></i> Tambah Baris Bubuk</button>
+                            <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-sm text-sm transition-colors">Simpan Data Bubuk</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- INPUT GILING -->
+            <div id="giling-input" class="tab-content max-w-full lg:max-w-4xl mx-auto">
+                <div class="card-panel p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600"><i class="fa-solid fa-mortar-pestle"></i></div>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Input Daily Giling</h3>
+                    </div>
+                    <form onsubmit="submitForm(event, 'giling')" class="space-y-4">
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <div class="col-span-2 md:col-span-1"><label class="modern-label">Tanggal</label><input type="date" id="giling-date" required class="modern-input"></div>
+                            <div><label class="modern-label">Shift</label><select id="giling-shift" required class="modern-input"><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option></select></div>
+                            <div><label class="modern-label">Grup</label><select id="giling-grup" required class="modern-input"><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option></select></div>
+                            <div><label class="modern-label">MPP Giling</label><input type="number" step="0.01" id="giling-mpp" class="modern-input"></div>
+                            <div><label class="modern-label">MPP Sortir</label><input type="number" step="0.01" id="giling-sortir" class="modern-input"></div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-bold text-slate-700">Detail Produk Giling</h4>
+                            </div>
+                            <div id="giling-rows-container" class="space-y-3"></div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 gap-3">
+                            <button type="button" onclick="addGilingRow()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors border border-slate-200"><i class="fa-solid fa-plus mr-1"></i> Tambah Baris Produk</button>
+                            <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-sm text-sm transition-colors">Simpan Data Giling</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- INPUT WASTE -->
+            <div id="waste-input" class="tab-content max-w-full lg:max-w-3xl mx-auto">
+                <div class="card-panel p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600"><i class="fa-solid fa-plus"></i></div>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Input Daily Waste - Plant <span class="plant-label">1112</span></h3>
+                    </div>
+                    
+                    <form onsubmit="submitForm(event, 'waste')" class="space-y-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div><label class="modern-label">Tanggal</label><input type="date" id="waste-date" required class="modern-input"></div>
+                            <div><label class="modern-label">Shift</label><select id="waste-shift" required class="modern-input"><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option></select></div>
+                            <div><label class="modern-label">Grup</label><select id="waste-grup" required class="modern-input"><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option></select></div>
+                            <div><label class="modern-label">Line</label><select id="waste-line" onchange="updateWasteProducts()" required class="modern-input"><option value="Line 1">Line 1</option><option value="Line 2">Line 2</option><option value="Line 3">Line 3</option><option value="Line 4">Line 4</option><option value="Line 5">Line 5</option></select></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                            <div>
+                                <label class="modern-label">Klasifikasi (Max 10)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="waste-klasifikasi-input" list="klasifikasi-list" placeholder="Pilih/ketik klasifikasi..." class="modern-input flex-1" 
+                                        onkeydown="if(event.key === 'Enter') { event.preventDefault(); addKlasifikasi(); }" 
+                                        onchange="if(this.value.trim() !== '') { addKlasifikasi(); }">
+                                    <button type="button" onclick="addKlasifikasi()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors">Tambah</button>
+                                </div>
+                                <input type="hidden" id="waste-klasifikasi">
+                                <div id="klasifikasi-tags" class="flex flex-wrap gap-2 mt-2"></div>
+                            </div>
+                            <div><label class="modern-label">Catatan</label><input type="text" id="waste-catatan" placeholder="Keterangan opsional..." class="modern-input"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl mt-2">
+                            <div><label class="modern-label text-slate-800">Pilih Produk</label><select id="waste-product" required class="modern-input bg-white"><option value="" disabled selected>Memuat...</option></select></div>
+                            <div><label class="modern-label text-slate-800">Jumlah Waste (KG)</label><input type="number" id="waste-qty" step="0.01" required placeholder="0" class="modern-input font-bold text-red-600 bg-white"></div>
+                        </div>
+                        <button type="submit" class="w-full py-3 mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-sm text-sm transition-colors">Simpan Data Waste</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="toast" class="fixed top-5 right-5 left-5 md:left-auto z-50 bg-slate-900 text-white px-4 md:px-5 py-3 rounded-lg shadow-xl transform -translate-y-24 opacity-0 transition-all duration-300 flex items-center justify-center md:justify-start md:min-w-[280px]">
+                <i class="fa-solid fa-circle-check text-green-400 mr-3 text-lg"></i> <span id="toast-msg" class="text-sm font-medium">Berhasil</span>
+            </div>
+        </div>
+    </main>
+
+    <script type="text/javascript">
+        // --- MASTER DATA ---
+        const MASTER_GILING = ["SGC Cream", "SGC Kulit", "Abon", "Tomyum", "SCO", "MCR", "COCONUT", "RSC Cream", "RSC Kulit", "Malju Kulit", "Malju Cream", "Malju India Cream", "Malju India Kulit", "MDC Kulit", "MDC Cream", "COCONUT 2", "CHOKY Kulit", "CHOKY Cream", "Malju Cream Korea", "Malju Kulit Korea"];
+        
+        const MINYAK_OPTIONS = ["RBD PALM OLEIN", "GLUCOSE", "RBD CNO", "HFS", "LIQUID SUGAR"];
+
+        const wasteProductsMap = {
+            '1112': {
+                'Line 1': ['SARI GANDUM KULIT', 'SARI GANDUM CREAM'],
+                'Line 2': ['MALKIST CRACKERS', 'MALKIST ABON', 'CREAM CRACKERS', 'MALKIST SOUR CREAM', 'MALKIST TOMYUM'],
+                'Line 3': ['COCONUT'],
+                'Line 4': ['MALKIST CRACKERS', 'MALKIST RENHO', 'ALKIST CHINA'],
+                'Line 5': ['RSC KULIT', 'RSC CREAM']
+            },
+            '1113': {
+                'Line 1': ['HUNGRY BUT BUSY (HBB)'],
+                'Line 2': ['Malju lokal', 'MDC', 'Malju India', 'Malju Korea'],
+                'Line 3': ['Choky Stix'],
+                'Line 4': ['Kelapa Renceng', 'Kelapa Lux'],
+                'Line 5': ['Malju Lokal', 'Malju Inda']
+            }
+        };
+
+        const bubukConfigMap = {
+            '1112': {
+                'Line 1': ['SARI GANDUM KULIT', 'SARI GANDUM CREAM'],
+                'Line 2': ['MALKIST CRACKERS', 'MALKIST ABON', 'CREAM CRACKERS', 'MALKIST SOUR CREAM', 'MALKIST TOMYUM'],
+                'Line 3': ['COCONUT', 'MALKIST CRACKERS', 'MALKIST CHOCOLATE COATING', 'CHOKY STICK COATING'],
+                'Line 4': ['MALKIST CRACKERS'],
+                'Line 5': ['RSC KULIT', 'RSC CREAM', 'CHOKY STICK COATING']
+            },
+            '1113': {
+                'Line 1': ['HBB'],
+                'Line 2': ['MALKIST DOUBLE CHOCO KULIT', 'MALKIST DOUBLE CHOCO COATING', 'MALKIST KEJU KULIT (*)', 'MALKIST KEJU COATING', 'CHOKI STIX COATING', 'CHOKI STIX KULIT/ CREAM CRACKERS'],
+                'Line 3': ['CHOKI STIX KULIT', 'CHOKI STIX COATING'],
+                'Line 4': ['COCONUT', 'MALKIST CRACKERS', 'CHOKI STIX KULIT', 'MALKIST COATING', 'CHOKI STIX COATING'],
+                'Line 5': ['MALKIST KEJU KULIT (*)', 'MALKIST KEJU COATING', 'CHOKI STIX KULIT/ CREAM CRACKERS']
+            }
+        };
+
+        let currentPlant = '1112';
+        let charts = { bubuk: null };
+        let gilingRowCount = 0;
+        let bubukRowCount = 0;
+        let minyakRowCount = 0;
+        let rawGilingData = [], rawWasteData = [], rawBubukDailyData = [], rawMinyakData = [];
+        let selectedKlasifikasi = []; 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
+            
+            const today = new Date();
+            ['waste-date', 'b-date', 'giling-date', 'm-date'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.valueAsDate = today;
+            });
+            
+            let lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7);
+            ['giling', 'waste', 'minyak', 'bubuk'].forEach(pref => {
+                let start = document.getElementById(pref+'-start-date');
+                let end = document.getElementById(pref+'-end-date');
+                if(start) start.valueAsDate = lastWeek;
+                if(end) end.valueAsDate = today;
+            });
+
+            const datalist = document.getElementById('list-giling-products');
+            MASTER_GILING.forEach(p => datalist.innerHTML += `<option value="${p}">`);
+            
+            addGilingRow(); 
+            addBubukRow();
+            addMinyakRow();
+            
+            setGlobalPlant('1112');
+            document.getElementById('dash-minyak').classList.add('active'); // Set tab awal default atau bubuk
+            switchTab('dash-bubuk');
+        });
+
+        function toggleSidebar() { 
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full'); 
+            
+            if(sidebar.classList.contains('-translate-x-full')) {
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            } else {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const targetEl = document.getElementById(tabId);
+            if(targetEl) targetEl.classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-blue-50', 'text-blue-700', 'active-nav');
+                el.classList.add('text-slate-600');
+                if(el.dataset.target === tabId) {
+                    el.classList.remove('text-slate-600');
+                    el.classList.add('bg-blue-50', 'text-blue-700', 'active-nav');
+                }
+            });
+
+            const pSelector = document.getElementById('plant-selector-container');
+            if(tabId === 'giling-input' || tabId === 'dash-giling') {
+                pSelector.style.opacity = '0'; pSelector.style.pointerEvents = 'none';
+            } else {
+                pSelector.style.opacity = '1'; pSelector.style.pointerEvents = 'auto';
+            }
+
+            const titles = {
+                'dash-bubuk': 'Dashboard Bubuk', 'dash-giling': 'Rekapan Giling',
+                'dash-waste': 'Rekapan Waste', 'dash-minyak': 'Rekapan Minyak',
+                'planning-view': 'Info Planning', 'waste-input': 'Input Waste', 
+                'bubuk-input': 'Input Bubuk', 'giling-input': 'Input Giling',
+                'minyak-input': 'Input Minyak'
+            };
+            const pageTitle = document.getElementById('page-title');
+            if(pageTitle) pageTitle.innerText = titles[tabId] || 'Dashboard';
+
+            if(tabId === 'dash-bubuk') loadDashBubuk();
+            if(tabId === 'dash-giling') loadDashGiling();
+            if(tabId === 'dash-waste') loadDashWaste();
+            if(tabId === 'dash-minyak') loadDashMinyak();
+            if(tabId === 'planning-view') loadPlanningData();
+        }
+
+        function setGlobalPlant(plant) {
+            currentPlant = plant;
+            
+            const btn1112 = document.getElementById('btn-plant-1112');
+            const btn1113 = document.getElementById('btn-plant-1113');
+            
+            if(plant === '1112') { btn1112.classList.add('active'); btn1113.classList.remove('active'); } 
+            else { btn1113.classList.add('active'); btn1112.classList.remove('active'); }
+            
+            document.querySelectorAll('.plant-label').forEach(el => el.innerText = plant);
+            updateWasteProducts();
+
+            // Re-render lines on existing Bubuk Input rows
+            document.querySelectorAll('.b-line').forEach(select => {
+                let currentVal = select.value;
+                select.innerHTML = '<option value="">Pilih Line...</option>';
+                Object.keys(bubukConfigMap[currentPlant]).forEach(l => { select.innerHTML += `<option value="${l}">${l}</option>`; });
+                select.value = currentVal; // try keep val
+                updateBubukProductOptions(select);
+            });
+
+            const activeTab = document.querySelector('.tab-content.active');
+            if(activeTab) {
+                if(activeTab.id === 'dash-bubuk') loadDashBubuk();
+                if(activeTab.id === 'dash-waste') loadDashWaste();
+                if(activeTab.id === 'dash-minyak') loadDashMinyak();
+                if(activeTab.id === 'planning-view') loadPlanningData();
+            }
+        }
+
+        // Utils
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            return Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7);
+        }
+        function formatDateReadable(dateStr) {
+            if(!dateStr) return '';
+            const date = new Date(dateStr);
+            if(isNaN(date)) return dateStr;
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, ' ');
+        }
+        function formatDateTime(dateStr) {
+             if(!dateStr) return '';
+             const d = new Date(dateStr);
+             if(isNaN(d)) return dateStr;
+             return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // --- DASHBOARD MINYAK ---
+        function loadDashMinyak() {
+            const loader = document.getElementById('loader'); loader.classList.add('active');
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(res => {
+                    loader.classList.remove('active');
+                    if (res.error) return;
+                    rawMinyakData = res.data;
+                    applyMinyakFilters();
+                }).getDashboardData(currentPlant, 'minyak_raw');
+            } else {
+                setTimeout(() => { loader.classList.remove('active'); rawMinyakData = getMockData('minyak_raw'); applyMinyakFilters(); }, 600);
+            }
+        }
+
+        function applyMinyakFilters() {
+            if(!rawMinyakData || rawMinyakData.length <= 1) return;
+            
+            let sd = document.getElementById('minyak-start-date').value ? new Date(document.getElementById('minyak-start-date').value) : new Date(0);
+            let ed = document.getElementById('minyak-end-date').value ? new Date(document.getElementById('minyak-end-date').value) : new Date();
+            ed.setHours(23,59,59);
+
+            let filteredData = [];
+            let grandTotal = 0;
+            let shiftTotals = {1: 0, 2: 0, 3: 0};
+
+            for(let i=1; i<rawMinyakData.length; i++) {
+                let row = rawMinyakData[i];
+                let d = row[0] ? new Date(row[0]) : null;
+                if(!d || d < sd || d > ed) continue;
+                
+                filteredData.push(row);
+                let qty = parseFloat(row[5]) || 0;
+                grandTotal += qty;
+                let shift = parseInt(row[1]) || 0;
+                if(shift >= 1 && shift <= 3) shiftTotals[shift] += qty;
+            }
+
+            document.getElementById('minyak-grand-total').innerText = grandTotal.toLocaleString('id-ID');
+            document.getElementById('minyak-shift1-total').innerText = shiftTotals[1].toLocaleString('id-ID');
+            document.getElementById('minyak-shift2-total').innerText = shiftTotals[2].toLocaleString('id-ID');
+            document.getElementById('minyak-shift3-total').innerText = shiftTotals[3].toLocaleString('id-ID');
+
+            const listContainer = document.getElementById('minyak-list-container');
+            if(filteredData.length === 0) { listContainer.innerHTML = '<div class="p-8 text-center text-slate-500 text-sm">Tidak ada data Bon Minyak.</div>'; return; }
+
+            filteredData.sort((a, b) => new Date(b[0]) - new Date(a[0]));
+            let html = '';
+            filteredData.forEach(row => {
+                let timestamp = row[0] ? formatDateTime(row[0]) : '-';
+                html += `
+                <div class="record-item">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800">${formatDateReadable(row[0])}</span>
+                        <span class="badge-shift bg-amber-50 text-amber-700 border-amber-200">SHIFT ${row[1]}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800">${row[3] || '-'}</span>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-lg font-black text-slate-800">${(parseFloat(row[5])||0).toLocaleString('id-ID')}</span> <span class="text-[10px] font-bold text-slate-400">KG</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-slate-600">${row[4] || '-'}</span>
+                        <span class="text-[10px] text-slate-400">Grup ${row[2]} • ${timestamp}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 min-h-[36px] flex items-center">
+                        ${row[6] || '-'}
+                    </div>
+                </div>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // --- DASHBOARD BUBUK (Mingguan + Harian) ---
+        function loadDashBubuk() {
+            const loader = document.getElementById('loader'); loader.classList.add('active');
+            
+            // Fetch Mingguan Chart
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(res => {
+                    renderBubuk10Weeks(res.data);
+                    // Fetch Harian Rekapan
+                    google.script.run.withSuccessHandler(res2 => {
+                        loader.classList.remove('active');
+                        rawBubukDailyData = res2.data; applyBubukListFilters();
+                    }).getDashboardData(currentPlant, 'bubuk_daily');
+                }).getDashboardData(currentPlant, 'weekly_bubuk');
+            } else {
+                setTimeout(() => { 
+                    loader.classList.remove('active'); 
+                    renderBubuk10Weeks(getMockData('weekly_bubuk'));
+                    rawBubukDailyData = getMockData('bubuk_daily'); applyBubukListFilters();
+                }, 600);
+            }
+        }
+
+        function renderBubuk10Weeks(data) {
+            if(!data || data.length < 2) return;
+            let currentWeek = getWeekNumber(new Date());
+            let startWeek = Math.max(1, currentWeek - 9); 
+            
+            let htmlHead = `<tr><th class="product-col">PRODUK MATERIAL</th>`;
+            for(let w = startWeek; w <= currentWeek; w++) htmlHead += `<th>W${w}</th>`;
+            htmlHead += `</tr>`;
+            document.getElementById('bubuk-dashboard-thead').innerHTML = htmlHead;
+
+            let bodyHtml = '';
+            let chartLabels = [];
+            let chartDataValues = new Array(currentWeek - startWeek + 1).fill(0);
+
+            for (let r = 1; r < data.length; r++) {
+                let isTotalRow = (r === data.length - 1) || data[r][0].toUpperCase() === 'TOTAL';
+                bodyHtml += `<tr class="${isTotalRow ? 'total-row' : ''}"><td class="product-col">${data[r][0]}</td>`;
+                
+                let idx = 0;
+                for(let w = startWeek; w <= currentWeek; w++) {
+                    let val = parseFloat(data[r][w]) || 0; 
+                    bodyHtml += `<td>${val > 0 ? val.toLocaleString('id-ID') : '-'}</td>`;
+                    if(isTotalRow) {
+                        chartLabels.push(`W${w}`); chartDataValues[idx] = val; idx++;
+                    }
+                }
+                bodyHtml += `</tr>`;
+            }
+            document.getElementById('bubuk-dashboard-tbody').innerHTML = bodyHtml;
+            document.getElementById('bubuk-dashboard-table').classList.add('table-compact');
+            
+            drawSpecificChart('bubukChart', 'bubuk', chartLabels, chartDataValues, 'bar', 'Total Pemasukan', '30, 58, 138'); 
+        }
+
+        function applyBubukListFilters() {
+            if(!rawBubukDailyData || rawBubukDailyData.length <= 1) return;
+            
+            let sd = document.getElementById('bubuk-start-date').value ? new Date(document.getElementById('bubuk-start-date').value) : new Date(0);
+            let ed = document.getElementById('bubuk-end-date').value ? new Date(document.getElementById('bubuk-end-date').value) : new Date();
+            ed.setHours(23,59,59);
+
+            let filteredData = [];
+            let grandTotal = 0;
+
+            for(let i=1; i<rawBubukDailyData.length; i++) {
+                let row = rawBubukDailyData[i];
+                let d = row[0] ? new Date(row[0]) : null;
+                if(!d || d < sd || d > ed) continue;
+                
+                filteredData.push(row);
+                let qty = parseFloat(row[7]) || 0;
+                grandTotal += qty;
+            }
+
+            document.getElementById('bubuk-list-grand-total').innerText = grandTotal.toLocaleString('id-ID');
+            const listContainer = document.getElementById('bubuk-list-container');
+            if(filteredData.length === 0) { listContainer.innerHTML = '<div class="p-8 text-center text-slate-500 text-sm">Tidak ada data Bon Bubuk.</div>'; return; }
+
+            filteredData.sort((a, b) => new Date(b[0]) - new Date(a[0]));
+            let html = '';
+            filteredData.forEach(row => {
+                html += `
+                <div class="record-item">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800">${formatDateReadable(row[0])}</span>
+                        <span class="badge-shift bg-blue-50 text-blue-700 border-blue-200">SHIFT ${row[1]}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-800">${row[4] || '-'}</span>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-lg font-black text-slate-800">${(parseFloat(row[7])||0).toLocaleString('id-ID')}</span> <span class="text-[10px] font-bold text-slate-400">KG</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-slate-600">${row[3]}</span>
+                        <span class="text-[10px] text-slate-500">Tgl Gil: ${row[5] ? new Date(row[5]).toLocaleDateString('id-ID') : '-'} | Prod: ${row[6] ? new Date(row[6]).toLocaleDateString('id-ID') : '-'}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 min-h-[36px] flex items-center">
+                        ${row[8] || '-'}
+                    </div>
+                </div>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // --- DASHBOARD GILING (Seperti Sebelumnya) ---
+        function loadDashGiling() {
+            const loader = document.getElementById('loader'); loader.classList.add('active');
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(res => {
+                    loader.classList.remove('active');
+                    if (res.error) return;
+                    rawGilingData = res.data; applyGilingFilters();
+                }).getDashboardData(currentPlant, 'giling_raw');
+            } else {
+                setTimeout(() => { loader.classList.remove('active'); rawGilingData = getMockData('giling_raw'); applyGilingFilters(); }, 600);
+            }
+        }
+        function applyGilingFilters() {
+            if(!rawGilingData || rawGilingData.length <= 1) return;
+            let sd = document.getElementById('giling-start-date').value ? new Date(document.getElementById('giling-start-date').value) : new Date(0);
+            let ed = document.getElementById('giling-end-date').value ? new Date(document.getElementById('giling-end-date').value) : new Date();
+            ed.setHours(23,59,59);
+            let group = document.getElementById('giling-group-filter').value;
+
+            let filteredData = []; let grandTotal = 0; let shiftTotals = {1: 0, 2: 0, 3: 0};
+            for(let i=1; i<rawGilingData.length; i++) {
+                let row = rawGilingData[i]; let d = row[0] ? new Date(row[0]) : null;
+                if(!d || d < sd || d > ed) continue;
+                if(group !== 'All' && row[2] !== group) continue;
+                
+                filteredData.push(row); let qty = parseFloat(row[7]) || 0; grandTotal += qty;
+                let shift = parseInt(row[1]) || 0; if(shift >= 1 && shift <= 3) shiftTotals[shift] += qty;
+            }
+
+            document.getElementById('giling-grand-total').innerText = grandTotal.toLocaleString('id-ID');
+            document.getElementById('giling-shift1-total').innerText = shiftTotals[1].toLocaleString('id-ID');
+            document.getElementById('giling-shift2-total').innerText = shiftTotals[2].toLocaleString('id-ID');
+            document.getElementById('giling-shift3-total').innerText = shiftTotals[3].toLocaleString('id-ID');
+
+            const listContainer = document.getElementById('giling-list-container');
+            if(filteredData.length === 0) { listContainer.innerHTML = '<div class="p-8 text-center text-slate-500 text-sm">Tidak ada data gilingan.</div>'; return; }
+
+            filteredData.sort((a, b) => new Date(b[0]) - new Date(a[0]));
+            let html = '';
+            filteredData.forEach(row => {
+                html += `
+                <div class="record-item">
+                    <div class="flex flex-col"><span class="text-sm font-bold text-slate-800">${formatDateReadable(row[0])}</span><span class="badge-shift bg-purple-50 text-purple-700 border-purple-200">SHIFT ${row[1]}</span></div>
+                    <div class="flex flex-col"><span class="text-sm font-bold text-slate-800">${row[5] || '-'}</span><span class="text-[10px] text-slate-500"><i class="fa-regular fa-calendar mr-1"></i>Prod: ${row[6] ? new Date(row[6]).toLocaleDateString('id-ID') : '-'}</span></div>
+                    <div class="flex items-baseline gap-1"><span class="text-lg font-black text-slate-800">${(parseFloat(row[7])||0).toLocaleString('id-ID')}</span> <span class="text-[10px] font-bold text-slate-400">KG</span></div>
+                    <div class="flex flex-col"><span class="text-xs font-semibold text-slate-600">Grup ${row[2]} (G:${row[3]||0} S:${row[4]||0})</span></div>
+                    <div class="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 min-h-[36px] flex items-center">${row[8] || '-'}</div>
+                </div>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // --- DASHBOARD WASTE (Seperti Sebelumnya) ---
+        function loadDashWaste() {
+            const loader = document.getElementById('loader'); loader.classList.add('active');
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(res => { loader.classList.remove('active'); if (res.error) return; rawWasteData = res.data; applyWasteFilters(); }).getDashboardData(currentPlant, 'waste_raw');
+            } else { setTimeout(() => { loader.classList.remove('active'); rawWasteData = getMockData('waste_raw'); applyWasteFilters(); }, 600); }
+        }
+        function applyWasteFilters() {
+            if(!rawWasteData || rawWasteData.length < 3) return;
+            let sd = document.getElementById('waste-start-date').value ? new Date(document.getElementById('waste-start-date').value) : new Date(0);
+            let ed = document.getElementById('waste-end-date').value ? new Date(document.getElementById('waste-end-date').value) : new Date();
+            ed.setHours(23,59,59);
+            let lineFilter = document.getElementById('waste-dash-line-filter').value;
+            let group = document.getElementById('waste-dash-group-filter').value;
+
+            let headers = rawWasteData[1]; let listData = []; let grandTotal = 0; let shiftTotals = {1: 0, 2: 0, 3: 0};
+
+            for(let r=2; r<rawWasteData.length; r++) {
+                let row = rawWasteData[r]; let d = row[0] ? new Date(row[0]) : null;
+                if(!d || d < sd || d > ed) continue;
+                if(lineFilter !== 'All' && row[3] !== lineFilter) continue;
+                if(group !== 'All' && row[2] !== group) continue;
+                
+                for(let c=6; c<headers.length; c++) {
+                    let qty = parseFloat(row[c]) || 0;
+                    if(qty > 0) {
+                        grandTotal += qty; let s = parseInt(row[1]) || 0; if(s >= 1 && s <= 3) shiftTotals[s] += qty;
+                        listData.push({ date: row[0], shift: s, group: row[2], line: row[3], klasifikasi: row[4] || '-', catatan: row[5] || '-', product: headers[c], qty: qty });
+                    }
+                }
+            }
+            document.getElementById('waste-grand-total').innerText = grandTotal.toLocaleString('id-ID');
+            document.getElementById('waste-shift1-total').innerText = shiftTotals[1].toLocaleString('id-ID');
+            document.getElementById('waste-shift2-total').innerText = shiftTotals[2].toLocaleString('id-ID');
+            document.getElementById('waste-shift3-total').innerText = shiftTotals[3].toLocaleString('id-ID');
+
+            const listContainer = document.getElementById('waste-list-container');
+            if(listData.length === 0) { listContainer.innerHTML = '<div class="p-8 text-center text-slate-500 text-sm">Tidak ada data waste.</div>'; return; }
+
+            listData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            let html = '';
+            listData.forEach(item => {
+                html += `
+                <div class="record-item">
+                    <div class="flex flex-col"><span class="text-sm font-bold text-slate-800">${formatDateReadable(item.date)}</span><span class="badge-shift bg-red-50 text-red-600 border-red-200">SHIFT ${item.shift}</span></div>
+                    <div class="flex flex-col"><span class="text-sm font-bold text-slate-800">${item.product}</span><span class="text-[10px] font-semibold text-slate-500"><i class="fa-solid fa-tag mr-1"></i>${item.klasifikasi}</span></div>
+                    <div class="flex items-baseline gap-1"><span class="text-lg font-black text-red-600">${item.qty.toLocaleString('id-ID')}</span> <span class="text-[10px] font-bold text-slate-400">KG</span></div>
+                    <div class="flex flex-col"><span class="text-xs font-semibold text-slate-700">${item.line} - Grup ${item.group}</span></div>
+                    <div class="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 min-h-[36px] flex items-center">${item.catatan}</div>
+                </div>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // --- INFO PLANNING ---
+        function loadPlanningData() {
+            const loader = document.getElementById('loader'); loader.classList.add('active');
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(data => { loader.classList.remove('active'); renderPlanningTable(data); }).getPlanningData(currentPlant);
+            } else { setTimeout(() => { loader.classList.remove('active'); renderPlanningTable([ ["LINE", "NAMA MATERIAL", "QTY PEMAKAIAN"], ["1", "SARI GANDUM KULIT", "1500 KG"]]); }, 600); }
+        }
+        function renderPlanningTable(data2D) {
+            const thead = document.getElementById('planning-thead'); const tbody = document.getElementById('planning-tbody');
+            if(!thead || !tbody) return; thead.innerHTML = ''; tbody.innerHTML = '';
+            if(!data2D || data2D.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-slate-500 text-sm">Tidak ada data Planning</td></tr>'; return; }
+            
+            let headHTML = '<tr>';
+            data2D[0].forEach((col, i) => { let cls = i===0 ? 'text-center w-10 md:w-16' : (i===2 ? 'text-right w-20 md:w-28' : 'text-left'); headHTML += `<th class="${cls}">${col}</th>`; });
+            thead.innerHTML = headHTML + '</tr>';
+
+            let bodyHTML = '';
+            for (let r = 1; r < data2D.length; r++) {
+                let row = data2D[r]; let hasLine = row[0] && row[0].toString().trim() !== "";
+                bodyHTML += `<tr class="${hasLine ? 'border-t-2 border-slate-300 bg-slate-50/50' : ''} hover:bg-slate-50 transition-colors">`;
+                for (let c = 0; c < Math.min(row.length, 3); c++) { bodyHTML += `<td>${row[c] || ''}</td>`; }
+                bodyHTML += '</tr>';
+            }
+            tbody.innerHTML = bodyHTML;
+        }
+
+        // --- INPUT FUNCTIONS ---
+        function addKlasifikasi() {
+            const input = document.getElementById('waste-klasifikasi-input');
+            const val = input.value.trim();
+            if (val) {
+                if (selectedKlasifikasi.length < 10) {
+                    if (!selectedKlasifikasi.includes(val)) { selectedKlasifikasi.push(val); renderKlasifikasiTags(); }
+                    input.value = ''; 
+                } else { showToast("Maksimal 10 klasifikasi!"); input.value = ''; }
+            }
+        }
+        function removeKlasifikasi(index) { selectedKlasifikasi.splice(index, 1); renderKlasifikasiTags(); }
+        function renderKlasifikasiTags() {
+            const container = document.getElementById('klasifikasi-tags'); const hiddenInput = document.getElementById('waste-klasifikasi');
+            container.innerHTML = '';
+            selectedKlasifikasi.forEach((tag, idx) => {
+                const badge = document.createElement('span'); badge.className = 'inline-flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-200 rounded-md text-[10px] md:text-xs font-semibold text-red-700 shadow-sm transition-all hover:bg-red-100';
+                badge.innerHTML = `${tag} <button type="button" onclick="removeKlasifikasi(${idx})" class="text-red-400 hover:text-red-600 focus:outline-none"><i class="fa-solid fa-times"></i></button>`;
+                container.appendChild(badge);
+            });
+            hiddenInput.value = selectedKlasifikasi.join(', ');
+        }
+        function updateWasteProducts() {
+            const lineSelect = document.getElementById('waste-line'); const productSelect = document.getElementById('waste-product');
+            if(!lineSelect || !productSelect) return;
+            const line = lineSelect.value;
+            productSelect.innerHTML = '<option value="" disabled selected>Pilih Produk...</option>';
+            if (wasteProductsMap[currentPlant] && wasteProductsMap[currentPlant][line]) {
+                wasteProductsMap[currentPlant][line].forEach(p => { productSelect.innerHTML += `<option value="${p}">${p}</option>`; });
+            } else { productSelect.innerHTML = '<option value="" disabled selected>-</option>'; }
+        }
+
+        function addBubukRow() {
+            if (bubukRowCount >= 10) { showToast("Maksimal 10 baris!"); return; }
+            bubukRowCount++;
+            const container = document.getElementById('bubuk-rows-container');
+            let lineOptions = '<option value="" disabled selected>Pilih Line...</option>';
+            if(bubukConfigMap[currentPlant]) {
+                Object.keys(bubukConfigMap[currentPlant]).forEach(l => { lineOptions += `<option value="${l}">${l}</option>`; });
+            }
+
+            const html = `
+                <div class="bubuk-row grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 border border-slate-200 bg-slate-50 rounded-xl relative mt-2">
+                    <span class="absolute -top-2 -left-2 bg-blue-600 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow">${bubukRowCount}</span>
+                    <button type="button" onclick="this.parentElement.remove(); bubukRowCount--;" class="absolute -top-2 -right-2 bg-red-100 text-red-600 hover:bg-red-500 hover:text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow transition-colors"><i class="fa-solid fa-times"></i></button>
+                    <div><label class="modern-label text-[10px]">Line</label><select class="b-line modern-input py-1.5 text-xs bg-white" onchange="updateBubukProductOptions(this)" required>${lineOptions}</select></div>
+                    <div><label class="modern-label text-[10px]">Nama Bubuk</label><select class="b-prod modern-input py-1.5 text-xs bg-white" required><option value="" disabled selected>Pilih Line Dahulu</option></select></div>
+                    <div><label class="modern-label text-[10px]">Tgl Giling</label><input type="date" class="b-giling modern-input py-1.5 text-xs bg-white" required></div>
+                    <div><label class="modern-label text-[10px]">Tgl Produksi</label><input type="date" class="b-prod-date modern-input py-1.5 text-xs bg-white" required></div>
+                    <div><label class="modern-label text-[10px]">Qty Pemasukan (KG)</label><input type="number" step="0.01" class="b-qty modern-input py-1.5 text-xs bg-white font-bold" placeholder="0" required></div>
+                    <div><label class="modern-label text-[10px]">Catatan</label><input type="text" class="b-cat modern-input py-1.5 text-xs bg-white" placeholder="Opsional..."></div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+        function updateBubukProductOptions(selectElement) {
+            const line = selectElement.value;
+            const prodSelect = selectElement.closest('.bubuk-row').querySelector('.b-prod');
+            prodSelect.innerHTML = '<option value="" disabled selected>Pilih Produk...</option>';
+            if(bubukConfigMap[currentPlant] && bubukConfigMap[currentPlant][line]) {
+                bubukConfigMap[currentPlant][line].forEach(p => { prodSelect.innerHTML += `<option value="${p}">${p}</option>`; });
+            }
+        }
+
+        function addMinyakRow() {
+            if (minyakRowCount >= 10) { showToast("Maksimal 10 baris!"); return; }
+            minyakRowCount++;
+            const container = document.getElementById('minyak-rows-container');
+            let mOptions = '<option value="" disabled selected>Pilih Minyak...</option>';
+            MINYAK_OPTIONS.forEach(m => mOptions += `<option value="${m}">${m}</option>`);
+
+            const html = `
+                <div class="minyak-row grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-4 border border-slate-200 bg-slate-50 rounded-xl relative mt-2">
+                    <span class="absolute -top-2 -left-2 bg-amber-500 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow">${minyakRowCount}</span>
+                    <button type="button" onclick="this.parentElement.remove(); minyakRowCount--;" class="absolute -top-2 -right-2 bg-red-100 text-red-600 hover:bg-red-500 hover:text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow transition-colors"><i class="fa-solid fa-times"></i></button>
+                    <div><label class="modern-label text-[10px]">Nama Minyak</label><select class="m-nama modern-input py-1.5 text-xs bg-white focus:border-amber-400" required>${mOptions}</select></div>
+                    <div><label class="modern-label text-[10px]">Supplier</label><input type="text" class="m-sup modern-input py-1.5 text-xs bg-white" placeholder="Nama Supplier" required></div>
+                    <div><label class="modern-label text-[10px]">Qty Masuk (KG)</label><input type="number" step="0.01" class="m-qty modern-input py-1.5 text-xs bg-white font-bold text-amber-600" placeholder="0" required></div>
+                    <div><label class="modern-label text-[10px]">Catatan</label><input type="text" class="m-cat modern-input py-1.5 text-xs bg-white" placeholder="Opsional..."></div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        function addGilingRow() {
+            if (gilingRowCount >= 6) { showToast("Maksimal 6 produk!"); return; }
+            gilingRowCount++;
+            const container = document.getElementById('giling-rows-container');
+            const html = `
+                <div class="giling-row grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-4 border border-slate-200 bg-slate-50 rounded-xl relative mt-2">
+                    <span class="absolute -top-2 -left-2 bg-slate-800 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow">${gilingRowCount}</span>
+                    <button type="button" onclick="this.parentElement.remove(); gilingRowCount--;" class="absolute -top-2 -right-2 bg-red-100 text-red-600 hover:bg-red-500 hover:text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow transition-colors"><i class="fa-solid fa-times"></i></button>
+                    <div><label class="modern-label text-[10px]">Nama Produk</label><input type="text" list="list-giling-products" class="g-prod modern-input py-1.5 text-xs bg-white focus:border-purple-400" placeholder="Pilih..." required></div>
+                    <div><label class="modern-label text-[10px]">Prod Date</label><input type="date" class="g-date modern-input py-1.5 text-xs bg-white" required></div>
+                    <div><label class="modern-label text-[10px]">Qty Giling (KG)</label><input type="number" step="0.01" class="g-qty modern-input py-1.5 text-xs bg-white font-bold" placeholder="0" required></div>
+                    <div><label class="modern-label text-[10px]">Catatan</label><input type="text" class="g-cat modern-input py-1.5 text-xs bg-white" placeholder="Opsional..."></div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        // --- SUBMIT DATA ---
+        function submitForm(e, type) {
+            e.preventDefault();
+            
+            if (type === 'waste' && selectedKlasifikasi.length === 0) { showToast("Minimal 1 klasifikasi!"); return; }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...'; btn.disabled = true;
+
+            let formData = { plant: currentPlant, type: type, items: [] };
+
+            if(type === 'giling') {
+                formData.date = document.getElementById('giling-date').value;
+                formData.shift = document.getElementById('giling-shift').value;
+                formData.grup = document.getElementById('giling-grup').value;
+                formData.mppGiling = document.getElementById('giling-mpp').value;
+                formData.mppSortir = document.getElementById('giling-sortir').value;
+                document.querySelectorAll('.giling-row').forEach(row => {
+                    formData.items.push({ product: row.querySelector('.g-prod').value, prodDate: row.querySelector('.g-date').value, qty: row.querySelector('.g-qty').value, catatan: row.querySelector('.g-cat').value });
+                });
+            } else if (type === 'waste') {
+                formData.date = document.getElementById('waste-date').value;
+                formData.shift = document.getElementById('waste-shift').value;
+                formData.grup = document.getElementById('waste-grup').value;
+                formData.line = document.getElementById('waste-line').value;
+                formData.klasifikasi = document.getElementById('waste-klasifikasi').value; 
+                formData.catatan = document.getElementById('waste-catatan').value;
+                formData.product = document.getElementById('waste-product').value;
+                formData.qty = document.getElementById('waste-qty').value;
+            } else if (type === 'bubuk') {
+                formData.date = document.getElementById('b-date').value;
+                formData.shift = document.getElementById('b-shift').value;
+                formData.grup = document.getElementById('b-grup').value;
+                document.querySelectorAll('.bubuk-row').forEach(row => {
+                    formData.items.push({ 
+                        line: row.querySelector('.b-line').value, product: row.querySelector('.b-prod').value, 
+                        tglGiling: row.querySelector('.b-giling').value, tglProd: row.querySelector('.b-prod-date').value,
+                        qty: row.querySelector('.b-qty').value, catatan: row.querySelector('.b-cat').value
+                    });
+                });
+            } else if (type === 'minyak') {
+                formData.date = document.getElementById('m-date').value;
+                formData.shift = document.getElementById('m-shift').value;
+                formData.grup = document.getElementById('m-grup').value;
+                document.querySelectorAll('.minyak-row').forEach(row => {
+                    formData.items.push({ 
+                        nama: row.querySelector('.m-nama').value, supplier: row.querySelector('.m-sup').value, 
+                        qty: row.querySelector('.m-qty').value, catatan: row.querySelector('.m-cat').value
+                    });
+                });
+            }
+
+            if(typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(msg => {
+                    btn.innerHTML = originalText; btn.disabled = false;
+                    e.target.reset();
+                    if(type === 'giling') { document.getElementById('giling-rows-container').innerHTML = ''; gilingRowCount=0; addGilingRow(); } 
+                    if(type === 'waste') { selectedKlasifikasi = []; renderKlasifikasiTags(); }
+                    if(type === 'bubuk') { document.getElementById('bubuk-rows-container').innerHTML = ''; bubukRowCount=0; addBubukRow(); }
+                    if(type === 'minyak') { document.getElementById('minyak-rows-container').innerHTML = ''; minyakRowCount=0; addMinyakRow(); }
+                    showToast(msg);
+                }).saveDailyData(formData);
+            } else {
+                setTimeout(() => { 
+                    btn.innerHTML = originalText; btn.disabled = false; showToast("Data berhasil disimpan (Simulasi)!"); 
+                    e.target.reset();
+                    if(type === 'giling') { document.getElementById('giling-rows-container').innerHTML = ''; gilingRowCount=0; addGilingRow(); } 
+                    if(type === 'waste') { selectedKlasifikasi = []; renderKlasifikasiTags(); }
+                    if(type === 'bubuk') { document.getElementById('bubuk-rows-container').innerHTML = ''; bubukRowCount=0; addBubukRow(); }
+                    if(type === 'minyak') { document.getElementById('minyak-rows-container').innerHTML = ''; minyakRowCount=0; addMinyakRow(); }
+                }, 800);
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('-translate-y-24', 'opacity-0');
+            setTimeout(() => t.classList.add('-translate-y-24', 'opacity-0'), 3000);
+        }
+
+        function drawSpecificChart(canvasId, chartKey, labels, data, chartType, label, rgbColor) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (charts[chartKey]) charts[chartKey].destroy();
+            let bg = `rgba(${rgbColor}, 0.8)`;
+            charts[chartKey] = new Chart(ctx, {
+                type: chartType,
+                data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: bg, borderColor: `rgb(${rgbColor})`, borderWidth: 0, borderRadius: 4, barPercentage: 0.6 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, title: { display: false }, datalabels: { color: '#475569', anchor: 'end', align: 'top', font: { weight: '600', size: 10, family: 'Inter' }, formatter: v => v > 0 ? v.toLocaleString('id-ID') : '', display: window.innerWidth > 768 } },
+                    scales: { y: { beginAtZero: true, border: { display: false }, grid: { color: '#f1f5f9' }, ticks: { font: {family: 'Inter', size: 10} } }, x: { grid: { display: false }, ticks: { font: {family: 'Inter', size: 10, weight: '600'} } } }
+                }
+            });
+        }
+
+        // --- WA SHARE FUNCTIONS ---
+        function shareWABubukList() {
+            let sdStr = document.getElementById('bubuk-start-date').value;
+            let edStr = document.getElementById('bubuk-end-date').value;
+            let sd = sdStr ? new Date(sdStr) : new Date(0);
+            let ed = edStr ? new Date(edStr) : new Date();
+            ed.setHours(23,59,59);
+
+            let summary = { 1: {}, 2: {}, 3: {} }; let totalAll = 0;
+
+            if (rawBubukDailyData && rawBubukDailyData.length > 1) {
+                for(let i=1; i<rawBubukDailyData.length; i++) {
+                    let row = rawBubukDailyData[i]; let d = row[0] ? new Date(row[0]) : null;
+                    if(!d || d < sd || d > ed) continue;
+
+                    let shift = parseInt(row[1]) || 0; let productName = row[4] || '-'; let qty = parseFloat(row[7]) || 0;
+                    if (shift >= 1 && shift <= 3) {
+                        if (!summary[shift][productName]) summary[shift][productName] = 0;
+                        summary[shift][productName] += qty; totalAll += qty;
+                    }
+                }
+            }
+
+            let text = `📦 *REKAPAN BON BUBUK - PLANT ${currentPlant}*\n🗓️ *Tgl:* ${sdStr} s/d ${edStr}\n\n`;
+            for (let s = 1; s <= 3; s++) {
+                text += `*SHIFT ${s}*\n`; let shiftTotal = 0; let hasProducts = false;
+                for (let prod in summary[s]) {
+                    let q = summary[s][prod];
+                    if (q > 0) { text += `- ${prod}: ${q.toLocaleString('id-ID')} Kg\n`; shiftTotal += q; hasProducts = true; }
+                }
+                if (!hasProducts) text += `- Tidak ada data\n`;
+                text += `*Subtotal Shift ${s}: ${shiftTotal.toLocaleString('id-ID')} Kg*\n\n`;
+            }
+            text += `✅ *TOTAL KESELURUHAN: ${totalAll.toLocaleString('id-ID')} KG*`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text.trim())}`, '_blank');
+        }
+
+        function shareWAMinyak() {
+            let sdStr = document.getElementById('minyak-start-date').value;
+            let edStr = document.getElementById('minyak-end-date').value;
+            let sd = sdStr ? new Date(sdStr) : new Date(0);
+            let ed = edStr ? new Date(edStr) : new Date();
+            ed.setHours(23,59,59);
+
+            let summary = { 1: {}, 2: {}, 3: {} }; let totalAll = 0;
+
+            if (rawMinyakData && rawMinyakData.length > 1) {
+                for(let i=1; i<rawMinyakData.length; i++) {
+                    let row = rawMinyakData[i]; let d = row[0] ? new Date(row[0]) : null;
+                    if(!d || d < sd || d > ed) continue;
+
+                    let shift = parseInt(row[1]) || 0; let productName = row[3] || '-'; let qty = parseFloat(row[5]) || 0;
+                    if (shift >= 1 && shift <= 3) {
+                        if (!summary[shift][productName]) summary[shift][productName] = 0;
+                        summary[shift][productName] += qty; totalAll += qty;
+                    }
+                }
+            }
+
+            let text = `🛢️ *REKAPAN BON MINYAK - PLANT ${currentPlant}*\n🗓️ *Tgl:* ${sdStr} s/d ${edStr}\n\n`;
+            for (let s = 1; s <= 3; s++) {
+                text += `*SHIFT ${s}*\n`; let shiftTotal = 0; let hasProducts = false;
+                for (let prod in summary[s]) {
+                    let q = summary[s][prod];
+                    if (q > 0) { text += `- ${prod}: ${q.toLocaleString('id-ID')} Kg\n`; shiftTotal += q; hasProducts = true; }
+                }
+                if (!hasProducts) text += `- Tidak ada data\n`;
+                text += `*Subtotal Shift ${s}: ${shiftTotal.toLocaleString('id-ID')} Kg*\n\n`;
+            }
+            text += `✅ *TOTAL KESELURUHAN: ${totalAll.toLocaleString('id-ID')} KG*`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text.trim())}`, '_blank');
+        }
+
+        function shareWAGiling() {
+            let sdStr = document.getElementById('giling-start-date').value; let edStr = document.getElementById('giling-end-date').value;
+            let sd = sdStr ? new Date(sdStr) : new Date(0); let ed = edStr ? new Date(edStr) : new Date(); ed.setHours(23,59,59);
+            let group = document.getElementById('giling-group-filter').value;
+
+            let summary = { 1: {}, 2: {}, 3: {} }; let totalAll = 0;
+
+            if (rawGilingData && rawGilingData.length > 1) {
+                for(let i=1; i<rawGilingData.length; i++) {
+                    let row = rawGilingData[i]; let d = row[0] ? new Date(row[0]) : null;
+                    if(!d || d < sd || d > ed) continue;
+                    if(group !== 'All' && row[2] !== group) continue;
+
+                    let shift = parseInt(row[1]) || 0; let productName = row[5] || 'Tidak Diketahui'; let qty = parseFloat(row[7]) || 0;
+                    if (shift >= 1 && shift <= 3) {
+                        if (!summary[shift][productName]) summary[shift][productName] = 0;
+                        summary[shift][productName] += qty; totalAll += qty;
+                    }
+                }
+            }
+            let text = `📊 *REKAPAN HASIL GILING*\n🗓️ *Tgl:* ${sdStr} s/d ${edStr}\n👥 *Grup:* ${group === 'All' ? 'Semua Grup' : 'Grup ' + group}\n\n`;
+            for (let s = 1; s <= 3; s++) {
+                text += `*SHIFT ${s}*\n`; let shiftTotal = 0; let hasProducts = false;
+                for (let prod in summary[s]) {
+                    let q = summary[s][prod];
+                    if (q > 0) { text += `- ${prod}: ${q.toLocaleString('id-ID')} Kg\n`; shiftTotal += q; hasProducts = true; }
+                }
+                if (!hasProducts) text += `- Tidak ada data\n`;
+                text += `*Subtotal Shift ${s}: ${shiftTotal.toLocaleString('id-ID')} Kg*\n\n`;
+            }
+            text += `📦 *TOTAL KESELURUHAN: ${totalAll.toLocaleString('id-ID')} KG*`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text.trim())}`, '_blank');
+        }
+
+        function shareWAWaste() {
+            let sdStr = document.getElementById('waste-start-date').value; let edStr = document.getElementById('waste-end-date').value;
+            let sd = sdStr ? new Date(sdStr) : new Date(0); let ed = edStr ? new Date(edStr) : new Date(); ed.setHours(23,59,59);
+            let lineFilter = document.getElementById('waste-dash-line-filter').value; let group = document.getElementById('waste-dash-group-filter').value;
+
+            let summary = { 1: {}, 2: {}, 3: {} }; let totalAll = 0;
+
+            if (rawWasteData && rawWasteData.length >= 3) {
+                let headers = rawWasteData[1];
+                for(let r=2; r<rawWasteData.length; r++) {
+                    let row = rawWasteData[r]; let d = row[0] ? new Date(row[0]) : null;
+                    if(!d || d < sd || d > ed) continue;
+                    if(lineFilter !== 'All' && row[3] !== lineFilter) continue;
+                    if(group !== 'All' && row[2] !== group) continue;
+
+                    let shift = parseInt(row[1]) || 0; let lineName = row[3] || 'Unknown Line'; let klasifikasi = row[4] || '-';
+                    if (shift >= 1 && shift <= 3) {
+                        for(let c=6; c<headers.length; c++) {
+                            let qty = parseFloat(row[c]) || 0;
+                            if(qty > 0) {
+                                let productName = headers[c]; if (!summary[shift][lineName]) summary[shift][lineName] = {};
+                                let prodKey = `${productName} (${klasifikasi})`;
+                                if (!summary[shift][lineName][prodKey]) summary[shift][lineName][prodKey] = 0;
+                                summary[shift][lineName][prodKey] += qty; totalAll += qty;
+                            }
+                        }
+                    }
+                }
+            }
+            let text = `🗑️ *REKAPAN WASTE - PLANT ${currentPlant}*\n🗓️ *Tgl:* ${sdStr} s/d ${edStr}\n🏭 *Line:* ${lineFilter}\n👥 *Grup:* ${group === 'All' ? 'Semua Grup' : 'Grup ' + group}\n\n`;
+            for (let s = 1; s <= 3; s++) {
+                text += `*SHIFT ${s}*\n`; let shiftTotal = 0; let hasData = false;
+                for (let l in summary[s]) { text += `_${l}_\n`; for (let prod in summary[s][l]) { let q = summary[s][l][prod]; text += `- ${prod}: ${q.toLocaleString('id-ID')} Kg\n`; shiftTotal += q; hasData = true; } }
+                if (!hasData) text += `- Tidak ada data\n`;
+                text += `*Subtotal Shift ${s}: ${shiftTotal.toLocaleString('id-ID')} Kg*\n\n`;
+            }
+            text += `🚨 *TOTAL KESELURUHAN: ${totalAll.toLocaleString('id-ID')} KG*`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text.trim())}`, '_blank');
+        }
+
+        // --- MOCK DATA FOR TESTING ---
+        function getMockData(type) {
+            let res = []; let d = new Date();
+            if(type === 'weekly_bubuk') {
+                res.push(["PRODUK MATERIAL"]); for(let i=1; i<=53; i++) res[0].push("Week "+i);
+                res.push(["SARI GANDUM KULIT"]); for(let i=1; i<=53; i++) res[1].push(Math.floor(Math.random()*500)+100);
+                res.push(["COCONUT"]); for(let i=1; i<=53; i++) res[2].push(Math.floor(Math.random()*400)+50);
+                res.push(["TOTAL"]); for(let i=1; i<=53; i++) res[3].push(res[1][i] + res[2][i]);
+            } else if (type === 'giling_raw') {
+                res.push(["TANGGAL", "SHIFT", "GRUP", "MPP GILING", "MPP SORTIR", "NAMA PRODUK", "PROD DATE", "QTY GILING", "CATATAN"]);
+                res.push([d.toISOString(), "3", "A", 4, 2, "MCR", "2026-08-20", 1000, "-"]);
+            } else if (type === 'waste_raw') {
+                res.push(["TANGGAL","SHIFT","GRUP","LINE","KLASIFIKASI","CATATAN","SARI GANDUM KULIT","SARI GANDUM CREAM"]);
+                res.push(["TANGGAL","SHIFT","GRUP","LINE","KLASIFIKASI","CATATAN","PROD_1","PROD_2"]);
+                res.push([d.toISOString(),"1","A","Line 1","MC Tinggi","-", 12.5, 0]);
+            } else if (type === 'bubuk_daily') {
+                res.push(["TANGGAL", "SHIFT", "GRUP", "LINE", "NAMA BUBUK", "TGL GILING", "TGL PRODUKSI", "KUANTITI", "CATATAN"]);
+                res.push([d.toISOString(), "2", "B", "Line 1", "SARI GANDUM KULIT", "2026-08-25", "2026-08-24", 50, "Sisa produksi"]);
+            } else if (type === 'minyak_raw') {
+                res.push(["TANGGAL", "SHIFT", "GRUP", "NAMA MINYAK", "SUPPLIER", "KUANTITI", "CATATAN"]);
+                res.push([d.toISOString(), "1", "A", "RBD PALM OLEIN", "PT Sawit", 500, "Bon Baru"]);
+            }
+            return res;
+        }
+
+        // --- PWA SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then((registration) => {
+                    console.log('ServiceWorker terdaftar dengan sukses pada scope: ', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('ServiceWorker gagal didaftarkan: ', error);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
