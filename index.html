@@ -988,6 +988,7 @@
 
         function renderBubuk10Weeks(data) {
             if(!data || data.length < 2) return;
+            
             let currentWeek = getWeekNumber(new Date());
             let startWeek = Math.max(1, currentWeek - 9); 
             
@@ -996,24 +997,57 @@
             htmlHead += `</tr>`;
             document.getElementById('bubuk-dashboard-thead').innerHTML = htmlHead;
 
+            // Mengambil semua produk yang terdaftar pada Sheet (Plant) bersangkutan dari variabel master
+            let masterProducts = [];
+            if (bubukConfigMap[currentPlant]) {
+                Object.values(bubukConfigMap[currentPlant]).forEach(list => {
+                    masterProducts = masterProducts.concat(list);
+                });
+            }
+            masterProducts = [...new Set(masterProducts)]; // Unique
+
+            // Mapping data yang diterima agar bisa dicocokan dengan seluruh produk yang wajib tampil
+            let dataMap = {};
+            let totalRowData = null;
+            
+            for (let r = 1; r < data.length; r++) {
+                let pName = data[r][0];
+                if(pName.toUpperCase() === 'TOTAL' || (r === data.length - 1 && !masterProducts.includes(pName))) {
+                    totalRowData = data[r];
+                } else {
+                    dataMap[pName] = data[r];
+                }
+            }
+
             let bodyHtml = '';
             let chartLabels = [];
             let chartDataValues = new Array(currentWeek - startWeek + 1).fill(0);
+            let colTotals = new Array(54).fill(0); // support hingga maks week 53
 
-            for (let r = 1; r < data.length; r++) {
-                let isTotalRow = (r === data.length - 1) || data[r][0].toUpperCase() === 'TOTAL';
-                bodyHtml += `<tr class="${isTotalRow ? 'total-row' : ''}"><td class="product-col">${data[r][0]}</td>`;
-                
-                let idx = 0;
+            // Memaksa setiap produk pada plant (1112/1113) untuk selalu ditampilkan
+            masterProducts.forEach(prod => {
+                bodyHtml += `<tr><td class="product-col">${prod}</td>`;
+                let rowData = dataMap[prod] || null;
                 for(let w = startWeek; w <= currentWeek; w++) {
-                    let val = parseFloat(data[r][w]) || 0; 
+                    let val = rowData ? (parseFloat(rowData[w]) || 0) : 0;
+                    colTotals[w] += val;
                     bodyHtml += `<td>${val > 0 ? val.toLocaleString('id-ID') : '-'}</td>`;
-                    if(isTotalRow) {
-                        chartLabels.push(`W${w}`); chartDataValues[idx] = val; idx++;
-                    }
                 }
                 bodyHtml += `</tr>`;
+            });
+
+            // Render Baris TOTAL khusus
+            bodyHtml += `<tr class="total-row"><td class="product-col">TOTAL</td>`;
+            let idx = 0;
+            for(let w = startWeek; w <= currentWeek; w++) {
+                let val = colTotals[w];
+                bodyHtml += `<td>${val > 0 ? val.toLocaleString('id-ID') : '-'}</td>`;
+                chartLabels.push(`W${w}`);
+                chartDataValues[idx] = val; 
+                idx++;
             }
+            bodyHtml += `</tr>`;
+
             document.getElementById('bubuk-dashboard-tbody').innerHTML = bodyHtml;
             document.getElementById('bubuk-dashboard-table').classList.add('table-compact');
             
@@ -1550,10 +1584,33 @@
         function getMockData(type) {
             let res = []; let d = new Date();
             if(type === 'weekly_bubuk') {
-                res.push(["PRODUK MATERIAL"]); for(let i=1; i<=53; i++) res[0].push("Week "+i);
-                res.push(["SARI GANDUM KULIT"]); for(let i=1; i<=53; i++) res[1].push(Math.floor(Math.random()*500)+100);
-                res.push(["COCONUT"]); for(let i=1; i<=53; i++) res[2].push(Math.floor(Math.random()*400)+50);
-                res.push(["TOTAL"]); for(let i=1; i<=53; i++) res[3].push(res[1][i] + res[2][i]);
+                res.push(["PRODUK MATERIAL"]); 
+                for(let i=1; i<=53; i++) res[0].push("Week "+i);
+                
+                // Ambil semua produk dari daftar map Plant yang bersangkutan
+                let products = [];
+                if (bubukConfigMap[currentPlant]) {
+                    Object.values(bubukConfigMap[currentPlant]).forEach(list => {
+                        products = products.concat(list);
+                    });
+                }
+                products = [...new Set(products)]; // Hanya simpan unik
+                
+                let totals = Array(53).fill(0);
+                products.forEach(p => {
+                    let row = [p];
+                    for(let i=1; i<=53; i++) {
+                        let val = Math.floor(Math.random() * 300) + 20; // Data dummy baru
+                        row.push(val);
+                        totals[i-1] += val;
+                    }
+                    res.push(row);
+                });
+                
+                let totalRow = ["TOTAL"];
+                for(let i=0; i<53; i++) totalRow.push(totals[i]);
+                res.push(totalRow);
+
             } else if (type === 'giling_raw') {
                 res.push(["TANGGAL", "SHIFT", "GRUP", "MPP GILING", "MPP SORTIR", "NAMA PRODUK", "PROD DATE", "QTY GILING", "CATATAN"]);
                 res.push([d.toISOString(), "3", "A", 4, 2, "MCR", "2026-08-20", 1000, "-"]);
