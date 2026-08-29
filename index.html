@@ -784,7 +784,7 @@
             addMinyakRow();
             
             setGlobalPlant('1112');
-            document.getElementById('dash-minyak').classList.add('active'); // Set tab awal default atau bubuk
+            document.getElementById('dash-minyak').classList.add('active');
             switchTab('dash-bubuk');
         });
 
@@ -852,12 +852,11 @@
             document.querySelectorAll('.plant-label').forEach(el => el.innerText = plant);
             updateWasteProducts();
 
-            // Re-render lines on existing Bubuk Input rows
             document.querySelectorAll('.b-line').forEach(select => {
                 let currentVal = select.value;
                 select.innerHTML = '<option value="">Pilih Line...</option>';
                 Object.keys(bubukConfigMap[currentPlant]).forEach(l => { select.innerHTML += `<option value="${l}">${l}</option>`; });
-                select.value = currentVal; // try keep val
+                select.value = currentVal; 
                 updateBubukProductOptions(select);
             });
 
@@ -870,7 +869,6 @@
             }
         }
 
-        // Utils
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
@@ -889,7 +887,6 @@
              return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
         }
 
-        // --- DASHBOARD MINYAK ---
         function loadDashMinyak() {
             const loader = document.getElementById('loader'); loader.classList.add('active');
             if (typeof google !== 'undefined' && google.script) {
@@ -963,15 +960,12 @@
             listContainer.innerHTML = html;
         }
 
-        // --- DASHBOARD BUBUK (Mingguan + Harian) ---
         function loadDashBubuk() {
             const loader = document.getElementById('loader'); loader.classList.add('active');
             
-            // Fetch Mingguan Chart
             if (typeof google !== 'undefined' && google.script) {
                 google.script.run.withSuccessHandler(res => {
                     renderBubuk10Weeks(res.data);
-                    // Fetch Harian Rekapan
                     google.script.run.withSuccessHandler(res2 => {
                         loader.classList.remove('active');
                         rawBubukDailyData = res2.data; applyBubukListFilters();
@@ -986,9 +980,12 @@
             }
         }
 
+        // ==========================================
+        // PERUBAHAN: Menampilkan semua produk bubuk
+        // yang ada di master (sheet/config)
+        // ==========================================
         function renderBubuk10Weeks(data) {
             if(!data || data.length < 2) return;
-            
             let currentWeek = getWeekNumber(new Date());
             let startWeek = Math.max(1, currentWeek - 9); 
             
@@ -997,54 +994,60 @@
             htmlHead += `</tr>`;
             document.getElementById('bubuk-dashboard-thead').innerHTML = htmlHead;
 
-            // Mengambil semua produk yang terdaftar pada Sheet (Plant) bersangkutan dari variabel master
-            let masterProducts = [];
-            if (bubukConfigMap[currentPlant]) {
-                Object.values(bubukConfigMap[currentPlant]).forEach(list => {
-                    masterProducts = masterProducts.concat(list);
+            // Kumpulkan semua nama produk material berdasarkan master config yang berjalan di plant saat ini
+            let masterProducts = new Set();
+            if(bubukConfigMap[currentPlant]) {
+                Object.values(bubukConfigMap[currentPlant]).forEach(products => {
+                    products.forEach(p => masterProducts.add(p));
                 });
             }
-            masterProducts = [...new Set(masterProducts)]; // Unique
-
-            // Mapping data yang diterima agar bisa dicocokan dengan seluruh produk yang wajib tampil
+            
+            // Map data yang dikirim dari Backend
             let dataMap = {};
             let totalRowData = null;
             
             for (let r = 1; r < data.length; r++) {
                 let pName = data[r][0];
-                if(pName.toUpperCase() === 'TOTAL' || (r === data.length - 1 && !masterProducts.includes(pName))) {
+                if (pName.toUpperCase() === 'TOTAL') {
                     totalRowData = data[r];
                 } else {
                     dataMap[pName] = data[r];
+                    // Masukkan juga jika backend mengirim produk ekstra di luar list
+                    masterProducts.add(pName); 
                 }
             }
 
+            // Urutkan List Produk Sesuai Alfabet
+            let sortedProducts = Array.from(masterProducts).sort();
             let bodyHtml = '';
-            let chartLabels = [];
-            let chartDataValues = new Array(currentWeek - startWeek + 1).fill(0);
-            let colTotals = new Array(54).fill(0); // support hingga maks week 53
-
-            // Memaksa setiap produk pada plant (1112/1113) untuk selalu ditampilkan
-            masterProducts.forEach(prod => {
+            
+            // Simpan variabel dinamis kalkulasi total 
+            let dynamicTotals = new Array(54).fill(0); 
+            
+            sortedProducts.forEach(prod => {
                 bodyHtml += `<tr><td class="product-col">${prod}</td>`;
-                let rowData = dataMap[prod] || null;
+                let row = dataMap[prod] || null;
+                
                 for(let w = startWeek; w <= currentWeek; w++) {
-                    let val = rowData ? (parseFloat(rowData[w]) || 0) : 0;
-                    colTotals[w] += val;
+                    let val = (row && row[w]) ? parseFloat(row[w]) || 0 : 0; 
                     bodyHtml += `<td>${val > 0 ? val.toLocaleString('id-ID') : '-'}</td>`;
+                    dynamicTotals[w] += val; // kalkulasikan ke baris total
                 }
                 bodyHtml += `</tr>`;
             });
 
-            // Render Baris TOTAL khusus
+            // Handle Baris 'TOTAL'
             bodyHtml += `<tr class="total-row"><td class="product-col">TOTAL</td>`;
-            let idx = 0;
+            let chartLabels = [];
+            let chartDataValues = [];
+            
             for(let w = startWeek; w <= currentWeek; w++) {
-                let val = colTotals[w];
+                // Gunakan Total dari backend jika ada, atau total perhitungan dinamis (fallback)
+                let val = (totalRowData && totalRowData[w]) ? parseFloat(totalRowData[w]) || 0 : dynamicTotals[w];
                 bodyHtml += `<td>${val > 0 ? val.toLocaleString('id-ID') : '-'}</td>`;
-                chartLabels.push(`W${w}`);
-                chartDataValues[idx] = val; 
-                idx++;
+                
+                chartLabels.push(`W${w}`); 
+                chartDataValues.push(val);
             }
             bodyHtml += `</tr>`;
 
@@ -1105,7 +1108,6 @@
             listContainer.innerHTML = html;
         }
 
-        // --- DASHBOARD GILING (Seperti Sebelumnya) ---
         function loadDashGiling() {
             const loader = document.getElementById('loader'); loader.classList.add('active');
             if (typeof google !== 'undefined' && google.script) {
@@ -1158,7 +1160,6 @@
             listContainer.innerHTML = html;
         }
 
-        // --- DASHBOARD WASTE (Seperti Sebelumnya) ---
         function loadDashWaste() {
             const loader = document.getElementById('loader'); loader.classList.add('active');
             if (typeof google !== 'undefined' && google.script) {
@@ -1212,7 +1213,6 @@
             listContainer.innerHTML = html;
         }
 
-        // --- INFO PLANNING ---
         function loadPlanningData() {
             const loader = document.getElementById('loader'); loader.classList.add('active');
             if (typeof google !== 'undefined' && google.script) {
@@ -1238,7 +1238,6 @@
             tbody.innerHTML = bodyHTML;
         }
 
-        // --- INPUT FUNCTIONS ---
         function addKlasifikasi() {
             const input = document.getElementById('waste-klasifikasi-input');
             const val = input.value.trim();
@@ -1336,7 +1335,6 @@
             container.insertAdjacentHTML('beforeend', html);
         }
 
-        // --- SUBMIT DATA ---
         function submitForm(e, type) {
             e.preventDefault();
             
@@ -1433,7 +1431,6 @@
             });
         }
 
-        // --- WA SHARE FUNCTIONS ---
         function shareWABubukList() {
             let sdStr = document.getElementById('bubuk-start-date').value;
             let edStr = document.getElementById('bubuk-end-date').value;
@@ -1580,37 +1577,13 @@
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text.trim())}`, '_blank');
         }
 
-        // --- MOCK DATA FOR TESTING ---
         function getMockData(type) {
             let res = []; let d = new Date();
             if(type === 'weekly_bubuk') {
-                res.push(["PRODUK MATERIAL"]); 
-                for(let i=1; i<=53; i++) res[0].push("Week "+i);
-                
-                // Ambil semua produk dari daftar map Plant yang bersangkutan
-                let products = [];
-                if (bubukConfigMap[currentPlant]) {
-                    Object.values(bubukConfigMap[currentPlant]).forEach(list => {
-                        products = products.concat(list);
-                    });
-                }
-                products = [...new Set(products)]; // Hanya simpan unik
-                
-                let totals = Array(53).fill(0);
-                products.forEach(p => {
-                    let row = [p];
-                    for(let i=1; i<=53; i++) {
-                        let val = Math.floor(Math.random() * 300) + 20; // Data dummy baru
-                        row.push(val);
-                        totals[i-1] += val;
-                    }
-                    res.push(row);
-                });
-                
-                let totalRow = ["TOTAL"];
-                for(let i=0; i<53; i++) totalRow.push(totals[i]);
-                res.push(totalRow);
-
+                res.push(["PRODUK MATERIAL"]); for(let i=1; i<=53; i++) res[0].push("Week "+i);
+                res.push(["SARI GANDUM KULIT"]); for(let i=1; i<=53; i++) res[1].push(Math.floor(Math.random()*500)+100);
+                res.push(["COCONUT"]); for(let i=1; i<=53; i++) res[2].push(Math.floor(Math.random()*400)+50);
+                res.push(["TOTAL"]); for(let i=1; i<=53; i++) res[3].push(res[1][i] + res[2][i]);
             } else if (type === 'giling_raw') {
                 res.push(["TANGGAL", "SHIFT", "GRUP", "MPP GILING", "MPP SORTIR", "NAMA PRODUK", "PROD DATE", "QTY GILING", "CATATAN"]);
                 res.push([d.toISOString(), "3", "A", 4, 2, "MCR", "2026-08-20", 1000, "-"]);
@@ -1628,7 +1601,6 @@
             return res;
         }
 
-        // --- PWA SERVICE WORKER REGISTRATION ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
