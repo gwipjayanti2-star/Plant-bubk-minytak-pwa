@@ -1,16 +1,3 @@
-const CACHE_NAME = 'plant-pwa-v1';
-
-// Daftar aset statis yang akan di-cache untuk keperluan offline load UI dasar
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
-  // Jangan men-cache endpoint script.google.com!
-];
-
-// Instalasi Service Worker
 const CACHE_NAME = 'plant-pwa-v2';
 
 // Daftar aset statis yang akan di-cache untuk keperluan offline load UI dasar
