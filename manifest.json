@@ -1,20 +1,19 @@
 {
-"name": "Plant Management Dashboard",
-"short_name": "Plant Portal",
-"description": "Sistem Manajemen Plant, Input Daily, dan Rekapan Produksi",
+"name": "Bubuk Management PWA",
+"short_name": "PlantApp",
 "start_url": "./index.html",
 "display": "standalone",
 "background_color": "#f8fafc",
 "theme_color": "#1e3a8a",
-"orientation": "portrait",
+"description": "Dashboard manajemen PWA untuk Plant 1112 dan 1113",
 "icons": [
 {
-"src": "https://cdn-icons-png.flaticon.com/512/2830/2830312.png",
+"src": "https://cdn-icons-png.flaticon.com/512/3593/3593673.png",
 "sizes": "192x192",
 "type": "image/png"
 },
 {
-"src": "https://cdn-icons-png.flaticon.com/512/2830/2830312.png",
+"src": "https://cdn-icons-png.flaticon.com/512/3593/3593673.png",
 "sizes": "512x512",
 "type": "image/png"
 }
