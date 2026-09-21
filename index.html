@@ -3,551 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bubuk Management PWA</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Spreadsheet PWA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#10b981">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        
-        :root { --brand-primary: #1e3a8a; --brand-secondary: #f59e0b; }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-font-smoothing: antialiased; }
-        
-        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
-        .tab-content.active { display: block; opacity: 1; animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .card-panel { background: white; border-radius: 1rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); border: 1px solid #f1f5f9; }
-        .table-container { border-radius: 0.75rem; overflow: auto; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); border: 1px solid #e2e8f0; background: white; }
-        
-        table { border-collapse: separate; border-spacing: 0; width: 100%; background: white;}
-        th, td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 0.75rem; text-align: center; }
-        th:last-child, td:last-child { border-right: none; }
-        
-        th { background-color: #f8fafc; font-weight: 600; color: #475569; position: sticky; top: 0; z-index: 5; font-size: 0.75rem; text-transform: uppercase; }
-        tbody tr:hover { background-color: #f8fafc; }
-        
-        /* Kolom Sticky */
-        .product-col { text-align: left !important; font-weight: 600; position: sticky; left: 0; background: white; z-index: 10; min-width: 130px; box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1); }
-        thead th.product-col { z-index: 20; background-color: #f8fafc; }
-        .category-col { text-align: left !important; position: sticky; left: 130px; background: white; z-index: 10; min-width: 120px; box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1); }
-        #bubuk-dashboard-table thead th.category-col { z-index: 20; background-color: #f8fafc; }
-        
-        @media (min-width: 768px) {
-            .product-col { width: 220px; min-width: 220px; }
-            .category-col { left: 220px; }
-        }
-
-        /* Tampilan Compact Planning */
-        .table-super-compact th { padding: 4px 6px !important; font-size: 10px !important; }
-        .table-super-compact td { padding: 4px 6px !important; font-size: 11px !important; }
-        .table-super-compact td:nth-child(1) { text-align: center; font-weight: 700; width: 40px; background-color: #f8fafc; }
-        
-        /* Input & Form */
-        .modern-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; background-color: #f8fafc; transition: all 0.2s; color: #1e293b; }
-        .modern-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .modern-label { display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem; text-transform: uppercase; }
-
-        /* Loader & Toast */
-        #loader { display: none; }
-        #loader.active { display: flex; }
-        .toast-active { transform: translateY(0) !important; opacity: 1 !important; }
-
-        /* List Rekapan */
-        .record-list-container { display: flex; flex-direction: column; }
-        .record-item { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
-        @media (min-width: 768px) { .record-item { grid-template-columns: 1.2fr 2fr 1fr 1.5fr 1.5fr; align-items: center; } }
-        .record-header-row { display: none; }
-        @media (min-width: 768px) { .record-header-row { display: grid; grid-template-columns: 1.2fr 2fr 1fr 1.5fr 1.5fr; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #cbd5e1; } }
+        /* Animasi loading sederhana */
+        .loader { border-top-color: #10b981; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden text-slate-800 selection:bg-blue-100 selection:text-blue-900">
-
-    <datalist id="list-giling-products"></datalist>
-
-    <div id="login-overlay" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center border-t-4 border-blue-600">
-            <div class="w-16 h-16 bg-blue-50 rounded-full mx-auto flex items-center justify-center mb-4">
-                <i class="fa-solid fa-shield-halved text-2xl text-blue-600"></i>
-            </div>
-            <h2 class="text-2xl font-black text-slate-800 mb-1">Akses Portal</h2>
-            <p class="text-sm text-slate-500 mb-6">Silakan login untuk mengakses dashboard.</p>
-            
-            <form onsubmit="handleLoginSubmit(event)" class="space-y-4 text-left">
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+    <div class="max-w-md mx-auto sm:my-10 bg-white sm:rounded-xl sm:shadow-lg overflow-hidden min-h-screen sm:min-h-0">
+        
+        <header class="bg-emerald-500 text-white p-5 text-center relative shadow-sm">
+            <h1 class="text-2xl font-bold tracking-wide">PWA x Spreadsheet</h1>
+            <p class="text-emerald-100 text-sm mt-1">Simpan dan baca data secara realtime</p>
+        </header>
+        
+        <main class="p-6">
+            <form id="dataForm" class="space-y-5 bg-gray-50 p-5 rounded-lg border border-gray-100 shadow-inner">
                 <div>
-                    <label class="modern-label">Username</label>
-                    <input type="text" id="login-username" required class="modern-input" placeholder="Masukkan username">
+                    <label for="nama" class="block text-sm font-semibold text-gray-700 mb-1">Nama Lengkap</label>
+                    <input type="text" id="nama" name="nama" required placeholder="Masukkan nama..." class="w-full border border-gray-300 rounded-md py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
                 </div>
                 <div>
-                    <label class="modern-label">Password</label>
-                    <input type="password" id="login-password" required class="modern-input" placeholder="Masukkan password">
+                    <label for="deskripsi" class="block text-sm font-semibold text-gray-700 mb-1">Deskripsi / Pesan</label>
+                    <textarea id="deskripsi" name="deskripsi" rows="3" required placeholder="Tulis sesuatu..." class="w-full border border-gray-300 rounded-md py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"></textarea>
                 </div>
-                <div id="login-error" class="text-xs text-red-500 font-semibold hidden text-center bg-red-50 p-2 rounded"></div>
-                <button type="submit" id="login-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg">
-                    Login Masuk
+                <button type="submit" id="submitBtn" class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all active:scale-95">
+                    Kirim Data
                 </button>
+                <div id="statusMsg" class="text-center text-sm font-medium mt-2 hidden px-3 py-2 rounded"></div>
             </form>
-            <p class="text-[10px] text-slate-400 mt-4">Gunakan <b>admin</b> / <b>admin</b> jika server sedang gangguan.</p>
-        </div>
+
+            <div class="my-8 flex items-center">
+                <div class="flex-grow border-t border-gray-200"></div>
+                <span class="mx-4 text-gray-400 text-sm">Data Tersimpan</span>
+                <div class="flex-grow border-t border-gray-200"></div>
+            </div>
+            
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-700">Riwayat</h2>
+                    <button id="refreshBtn" class="flex items-center text-sm bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 py-1.5 px-3 rounded-full font-medium transition-colors">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Segarkan
+                    </button>
+                </div>
+                <div id="dataList" class="space-y-4 max-h-80 overflow-y-auto pr-1 pb-4">
+                    <div class="flex justify-center items-center h-20">
+                        <div class="loader border-4 border-gray-200 rounded-full w-8 h-8"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Sidebar Overlay for Mobile -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity" onclick="toggleSidebar()"></div>
-
-    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 flex flex-col fixed md:relative z-40 h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300">
-        <div class="h-16 flex items-center justify-between px-5 border-b border-slate-100">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shadow-sm"><i class="fa-solid fa-cookie-bite text-amber-500 text-lg"></i></div>
-                <div class="leading-tight">
-                    <h1 class="text-sm font-black text-slate-800 tracking-tight">PLANT PWA</h1>
-                    <span class="text-[10px] text-slate-500 font-semibold uppercase">Manajemen App</span>
-                </div>
-            </div>
-            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-times text-lg"></i></button>
-        </div>
-        
-        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <div class="pt-2 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rekapan Data</div>
-            <button onclick="switchTab('dash-bubuk')" class="nav-btn bg-blue-50 text-blue-700 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" data-target="dash-bubuk">
-                <i class="fa-solid fa-chart-line w-5 text-center"></i> Dashboard Bubuk
-            </button>
-            <button onclick="switchTab('dash-giling')" class="nav-btn text-slate-600 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors" data-target="dash-giling">
-                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Rekapan Giling
-            </button>
-            
-            <div class="pt-5 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Planning</div>
-            <button onclick="switchTab('planning-view')" class="nav-btn text-slate-600 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors" data-target="planning-view">
-                <i class="fa-solid fa-table-list w-5 text-center"></i> Info Planning
-            </button>
-            
-            <div id="operator-menu-section" class="hidden">
-                <div class="pt-5 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Input Data</div>
-                <button onclick="switchTab('giling-input')" class="nav-btn text-slate-600 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors" data-target="giling-input">
-                    <i class="fa-solid fa-mortar-pestle w-5 text-center"></i> Daily Giling
-                </button>
-            </div>
-        </nav>
-        
-        <div class="p-4 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50">
-            <div class="flex items-center gap-2 overflow-hidden">
-                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><i class="fa-solid fa-user text-xs"></i></div>
-                <div class="flex-1 min-w-0">
-                    <p id="user-name-display" class="text-xs font-bold text-slate-800 truncate">Nama User</p>
-                    <p id="user-role-display" class="text-[10px] text-slate-500 uppercase font-semibold truncate">Role</p>
-                </div>
-            </div>
-            <button onclick="logout()" class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-lg" title="Logout"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
-        </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col overflow-hidden relative w-full bg-slate-50/50">
-        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-6 h-16 flex justify-between items-center z-20 sticky top-0">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="md:hidden w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-bars"></i></button>
-                <h2 id="page-title" class="text-base md:text-lg font-bold text-slate-800">Dashboard Bubuk</h2>
-            </div>
-            
-            <div id="plant-selector-container" class="flex bg-slate-200 p-1 rounded-lg">
-                <button onclick="setGlobalPlant('1112')" id="btn-plant-1112" class="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all">P1112</button>
-                <button onclick="setGlobalPlant('1113')" id="btn-plant-1113" class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">P1113</button>
-            </div>
-        </header>
-
-        <div class="flex-1 overflow-y-auto p-3 md:p-6 relative">
-            <div id="loader" class="absolute inset-0 bg-slate-50/80 z-50 items-center justify-center backdrop-blur-sm hidden">
-                <div class="flex flex-col items-center bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-                    <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
-                    <p class="mt-4 text-sm font-semibold text-slate-600" id="loader-text">Memproses data...</p>
-                </div>
-            </div>
-
-            <div id="dash-bubuk" class="tab-content active space-y-4 md:space-y-6 w-full max-w-full mx-auto">
-                <div class="card-panel p-4 md:p-6">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
-                        <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-chart-column text-blue-600 text-2xl"></i>
-                            <div><h3 class="text-lg font-bold text-slate-800">Data Bubuk Mingguan</h3><p class="text-xs text-slate-500">Plant <span class="plant-label">1112</span></p></div>
-                        </div>
-                        <button onclick="loadDashBubuk()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-rotate-right mr-1"></i> Muat Ulang</button>
-                    </div>
-                    
-                    <div class="w-full h-[250px] md:h-[300px] mb-6"><canvas id="bubukChart"></canvas></div>
-                    <div class="table-container overflow-x-auto max-h-[500px]">
-                        <table id="bubuk-dashboard-table" class="min-w-full"><thead id="bubuk-dashboard-thead"></thead><tbody id="bubuk-dashboard-tbody"></tbody></table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="dash-giling" class="tab-content space-y-4 md:space-y-6 w-full max-w-full mx-auto">
-                <div class="card-panel p-4 md:p-6">
-                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
-                        <div class="flex items-center gap-3"><div><h3 class="text-lg font-bold text-slate-800">Riwayat Gilingan</h3></div></div>
-                        <div class="flex flex-wrap gap-2 w-full xl:w-auto">
-                            <input type="date" id="giling-start-date" onchange="applyGilingFilters()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs">
-                            <input type="date" id="giling-end-date" onchange="applyGilingFilters()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs">
-                            <select id="giling-group-filter" onchange="applyGilingFilters()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs">
-                                <option value="All">Semua Grup</option><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option>
-                            </select>
-                            <button onclick="loadDashGiling()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-rotate-right"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="p-4 bg-purple-50 rounded-xl"><p class="text-[10px] font-bold text-purple-600 uppercase">Total (KG)</p><p id="giling-grand-total" class="text-2xl font-black text-slate-800">0</p></div>
-                        <div class="p-4 bg-white border border-slate-200 rounded-xl"><p class="text-[10px] font-bold text-slate-500 uppercase">Shift 1</p><p id="giling-shift1-total" class="text-xl font-bold">0</p></div>
-                        <div class="p-4 bg-white border border-slate-200 rounded-xl"><p class="text-[10px] font-bold text-slate-500 uppercase">Shift 2</p><p id="giling-shift2-total" class="text-xl font-bold">0</p></div>
-                        <div class="p-4 bg-white border border-slate-200 rounded-xl"><p class="text-[10px] font-bold text-slate-500 uppercase">Shift 3</p><p id="giling-shift3-total" class="text-xl font-bold">0</p></div>
-                    </div>
-
-                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                        <div class="record-header-row bg-slate-50"><div>Waktu / Shift</div><div>Produk</div><div>Jumlah (Kg)</div><div>Grup</div><div>Catatan</div></div>
-                        <div id="giling-list-container" class="record-list-container"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="planning-view" class="tab-content max-w-full lg:max-w-4xl mx-auto">
-                <div class="card-panel p-5">
-                    <div class="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
-                        <h3 class="text-base font-bold text-slate-800">Material Planning Plant <span class="plant-label">1112</span></h3>
-                        <button onclick="loadPlanningData()" class="px-3 py-1.5 bg-teal-50 text-teal-700 rounded text-xs font-bold"><i class="fa-solid fa-rotate-right mr-1"></i>Refresh</button>
-                    </div>
-                    <div class="table-container overflow-x-auto border-none shadow-none"><table id="planning-table" class="table-super-compact"><thead id="planning-thead"></thead><tbody id="planning-tbody"></tbody></table></div>
-                </div>
-            </div>
-
-            <div id="giling-input" class="tab-content max-w-full lg:max-w-4xl mx-auto">
-                <div class="card-panel p-5 md:p-8 relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
-                    <h3 class="text-lg font-bold text-slate-800 mb-6"><i class="fa-solid fa-mortar-pestle text-purple-600 mr-2"></i> Input Daily Giling</h3>
-                    
-                    <form onsubmit="submitGilingForm(event)" class="space-y-4">
-                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <div class="col-span-2 md:col-span-1"><label class="modern-label">Tanggal</label><input type="date" id="giling-date" required class="modern-input"></div>
-                            <div><label class="modern-label">Shift</label><select id="giling-shift" required class="modern-input"><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option></select></div>
-                            <div><label class="modern-label">Grup</label><select id="giling-grup" required class="modern-input"><option value="A">Grup A</option><option value="B">Grup B</option><option value="C">Grup C</option></select></div>
-                            <div><label class="modern-label">MPP Giling</label><input type="number" step="0.01" id="giling-mpp" class="modern-input"></div>
-                            <div><label class="modern-label">MPP Sortir</label><input type="number" step="0.01" id="giling-sortir" class="modern-input"></div>
-                        </div>
-                        
-                        <div class="mt-4 pt-4 border-t border-slate-100">
-                            <h4 class="text-sm font-bold text-slate-700 mb-3">Detail Produk Giling</h4>
-                            <div id="giling-rows-container" class="space-y-3"></div>
-                        </div>
-
-                        <div class="flex justify-between items-center mt-6">
-                            <button type="button" onclick="addGilingRow()" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg text-xs"><i class="fa-solid fa-plus mr-1"></i> Tambah Baris</button>
-                            <button type="submit" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md">Simpan Data</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <div id="toast" class="fixed top-5 right-5 z-[150] bg-slate-900 text-white px-5 py-3 rounded-lg shadow-xl transform -translate-y-24 opacity-0 transition-all duration-300 flex items-center min-w-[280px]">
-                <i class="fa-solid fa-circle-check text-green-400 mr-3 text-lg"></i> <span id="toast-msg" class="text-sm font-medium">Berhasil</span>
-            </div>
-        </div>
-    </main>
-
     <script>
-        // URL Google Apps Script Anda yang BARU
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxWcN6AjX3FEI1is9CIlFA3OzJZ0PxMrkxWRmnS8pii_qae0N1PDDwm1GFSePgFVfWT/exec"; 
+        // =========================================================
+        // GANTI URL DI BAWAH INI DENGAN URL WEB APP GAS ANDA!
+        // =========================================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWcN6AjX3FEI1is9CIlFA3OzJZ0PxMrkxWRmnS8pii_qae0N1PDDwm1GFSePgFVfWT/exec'; 
         
-        const MASTER_GILING = ["SGC Cream", "SGC Kulit", "Abon", "Tomyum", "SCO", "MCR", "COCONUT", "RSC Cream", "RSC Kulit", "Malju Kulit", "Malju Cream", "Malju India Cream", "Malju India Kulit", "MDC Kulit", "MDC Cream", "COCONUT 2", "CHOKY Kulit", "CHOKY Cream", "Malju Cream Korea", "Malju Kulit Korea"];
-        let currentPlant = '1112';
-        let charts = { bubuk: null };
-        let gilingRowCount = 0;
-        let rawGilingData = [];
-        let authUser = null;
+        const form = document.getElementById('dataForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const dataList = document.getElementById('dataList');
+        const refreshBtn = document.getElementById('refreshBtn');
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
-            checkAuth();
+        // Mendaftarkan Service Worker untuk PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker terdaftar di scope:', reg.scope))
+                    .catch(err => console.log('Service Worker gagal didaftarkan:', err));
+            });
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            const datalist = document.getElementById('list-giling-products');
-            MASTER_GILING.forEach(p => datalist.innerHTML += `<option value="${p}">`);
-            
-            if('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').then(reg => console.log('SW terdaftar')).catch(err => console.error('Gagal daftar SW', err));
+            if (SCRIPT_URL === 'GANTI_DENGAN_URL_WEB_APP_ANDA') {
+                showStatus('Error: Masukkan URL Web App Apps Script di file HTML!', 'error');
+                return;
+            }
+
+            const formData = {
+                nama: document.getElementById('nama').value,
+                deskripsi: document.getElementById('deskripsi').value
+            };
+
+            // UI State: Loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loader border-2 border-white rounded-full w-4 h-4 mr-2"></div> Mengirim...';
+            showStatus('Menyimpan data ke Spreadsheet...', 'info');
+
+            try {
+                // Menggunakan text/plain untuk menghindari preflight CORS request dari browser
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showStatus('Berhasil disimpan!', 'success');
+                    form.reset();
+                    loadData(); // Reload data otomatis
+                } else {
+                    showStatus('Gagal: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Gagal terhubung. Pastikan internet lancar dan URL Web App benar.', 'error');
+                console.error(error);
+            } finally {
+                // UI State: Reset
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Kirim Data';
+                setTimeout(() => statusMsg.classList.add('hidden'), 5000); // Sembunyikan pesan setelah 5 detik
             }
         });
 
-        function checkAuth() {
-            const saved = localStorage.getItem('plant_pwa_user');
-            if(saved) {
-                authUser = JSON.parse(saved);
-                applyAuthToUI();
-            } else {
-                document.getElementById('login-overlay').classList.remove('hidden');
+        refreshBtn.addEventListener('click', loadData);
+
+        async function loadData() {
+            if (SCRIPT_URL === 'GANTI_DENGAN_URL_WEB_APP_ANDA') {
+                dataList.innerHTML = `
+                    <div class="bg-red-50 text-red-600 p-4 rounded-lg text-center text-sm border border-red-200">
+                        Harap set URL Apps Script terlebih dahulu di dalam kode file index.html
+                    </div>`;
+                return;
             }
-        }
 
-        async function handleLoginSubmit(e) {
-            e.preventDefault();
-            const btn = document.getElementById('login-btn');
-            const err = document.getElementById('login-error');
-            const userVal = document.getElementById('login-username').value;
-            const passVal = document.getElementById('login-password').value;
-
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
-            btn.disabled = true; 
-            err.classList.add('hidden');
-
+            dataList.innerHTML = '<div class="flex justify-center items-center h-20"><div class="loader border-4 border-gray-200 rounded-full w-8 h-8"></div></div>';
+            
             try {
-                const res = await fetchGAS({
-                    action: 'login',
-                    username: userVal,
-                    password: passVal
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                
+                dataList.innerHTML = '';
+                if (data.length === 0) {
+                    dataList.innerHTML = '<p class="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">Belum ada data di spreadsheet.</p>';
+                    return;
+                }
+
+                // Membalik urutan agar data terbaru berada di atas
+                data.reverse().forEach(item => {
+                    // Coba baca header dengan huruf besar awal atau sama persis
+                    const nama = item.Nama || item.nama || item.NAMA || 'Tanpa Nama';
+                    const deskripsi = item.Deskripsi || item.deskripsi || item.DESKRIPSI || '-';
+                    
+                    let timeString = '';
+                    if (item.Timestamp || item.timestamp) {
+                        const date = new Date(item.Timestamp || item.timestamp);
+                        timeString = isNaN(date) ? (item.Timestamp || item.timestamp) : date.toLocaleString('id-ID');
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden';
+                    card.innerHTML = `
+                        <div class="absolute left-0 top-0 w-1 h-full bg-emerald-400"></div>
+                        <div class="font-bold text-gray-800 text-base">${nama}</div>
+                        <div class="text-sm text-gray-600 mt-1.5 leading-relaxed">${deskripsi}</div>
+                        ${timeString ? `<div class="text-xs text-gray-400 mt-3 flex items-center"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>${timeString}</div>` : ''}
+                    `;
+                    dataList.appendChild(card);
                 });
-
-                if(res && res.success) {
-                    authUser = res;
-                    localStorage.setItem('plant_pwa_user', JSON.stringify(res));
-                    applyAuthToUI();
-                } else {
-                    err.innerText = (res && res.message) ? res.message : "Username atau password salah."; 
-                    err.classList.remove('hidden');
-                }
             } catch (error) {
-                // FALLBACK MODE DEMO: Jika gagal koneksi ke Apps Script, izinkan admin/admin
-                if (userVal === 'admin' && passVal === 'admin') {
-                    console.warn("Menggunakan mode demo (admin) karena server gagal diakses.");
-                    authUser = { success: true, username: 'Admin (Mode Demo)', role: 'admin' };
-                    localStorage.setItem('plant_pwa_user', JSON.stringify(authUser));
-                    applyAuthToUI();
-                    showToast("Login Mode Demo Aktif");
-                } else {
-                    err.innerText = "Gagal terhubung ke server GAS. Pastikan URL benar atau gunakan admin/admin untuk tes."; 
-                    err.classList.remove('hidden');
-                    console.error("Login Error:", error);
-                }
-            } finally {
-                btn.innerHTML = 'Login Masuk'; 
-                btn.disabled = false;
+                dataList.innerHTML = '<div class="bg-red-50 text-red-500 text-sm p-4 rounded-lg text-center">Gagal memuat data. Cek koneksi Anda.</div>';
+                console.error(error);
             }
         }
 
-        function applyAuthToUI() {
-            document.getElementById('login-overlay').classList.add('hidden');
-            document.getElementById('user-name-display').innerText = authUser.username;
-            document.getElementById('user-role-display').innerText = authUser.role;
+        function showStatus(text, type) {
+            statusMsg.innerHTML = text;
+            statusMsg.className = 'text-center text-sm font-medium mt-3 px-3 py-2 rounded-md transition-all';
+            statusMsg.classList.remove('hidden');
             
-            if(authUser.role === 'operator' || authUser.role === 'admin') {
-                document.getElementById('operator-menu-section').classList.remove('hidden');
+            if (type === 'success') {
+                statusMsg.classList.add('bg-green-100', 'text-green-700', 'border', 'border-green-200');
+            } else if (type === 'error') {
+                statusMsg.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-200');
             } else {
-                document.getElementById('operator-menu-section').classList.add('hidden');
-                if(document.getElementById('giling-input').classList.contains('active')) switchTab('dash-bubuk');
-            }
-            initApp();
-        }
-
-        function logout() {
-            localStorage.removeItem('plant_pwa_user');
-            authUser = null;
-            document.getElementById('login-username').value = '';
-            document.getElementById('login-password').value = '';
-            document.getElementById('login-overlay').classList.remove('hidden');
-        }
-
-        async function fetchGAS(payload) {
-            // Ditambahkan redirect: "follow" dan penanganan error JSON
-            const response = await fetch(GAS_URL, {
-                method: "POST",
-                redirect: "follow", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload)
-            });
-            
-            if(!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error("Server merespons bukan dengan JSON:", text);
-                throw new Error("Format respons dari server tidak valid (Cek setelan akses Apps Script).");
+                statusMsg.classList.add('bg-blue-100', 'text-blue-700', 'border', 'border-blue-200');
             }
         }
 
-        function initApp() {
-            const today = new Date();
-            document.getElementById('giling-date').valueAsDate = today;
-            let lastWeek = new Date(); lastWeek.setDate(today.getDate() - 7);
-            document.getElementById('giling-start-date').valueAsDate = lastWeek;
-            document.getElementById('giling-end-date').valueAsDate = today;
-            
-            addGilingRow(); 
-            setGlobalPlant('1112');
-            loadDashBubuk();
-        }
-
-        function toggleSidebar() { 
-            const s = document.getElementById('sidebar'), o = document.getElementById('sidebar-overlay');
-            s.classList.toggle('-translate-x-full'); 
-            if(s.classList.contains('-translate-x-full')) { o.classList.add('hidden'); } else { o.classList.remove('hidden'); }
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            
-            document.querySelectorAll('.nav-btn').forEach(el => {
-                el.classList.remove('bg-blue-50', 'text-blue-700'); el.classList.add('text-slate-600');
-                if(el.dataset.target === tabId) { el.classList.remove('text-slate-600'); el.classList.add('bg-blue-50', 'text-blue-700'); }
-            });
-            if(window.innerWidth < 768) toggleSidebar();
-
-            const pSel = document.getElementById('plant-selector-container');
-            pSel.style.display = (tabId === 'giling-input' || tabId === 'dash-giling') ? 'none' : 'flex';
-            
-            const t = {'dash-bubuk':'Dashboard Bubuk', 'dash-giling':'Rekapan Giling', 'planning-view':'Info Planning', 'giling-input':'Input Giling'};
-            document.getElementById('page-title').innerText = t[tabId] || 'Dashboard';
-            
-            if(tabId === 'dash-bubuk') loadDashBubuk();
-            if(tabId === 'dash-giling') loadDashGiling();
-            if(tabId === 'planning-view') loadPlanningData();
-        }
-
-        function setGlobalPlant(plant) {
-            currentPlant = plant;
-            const b1 = document.getElementById('btn-plant-1112'), b2 = document.getElementById('btn-plant-1113');
-            if(plant === '1112') { b1.className="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-sm"; b2.className="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700"; }
-            else { b2.className="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-sm"; b1.className="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700"; }
-            
-            document.querySelectorAll('.plant-label').forEach(el => el.innerText = plant);
-            
-            const activeTab = document.querySelector('.tab-content.active');
-            if(activeTab) {
-                if(activeTab.id === 'dash-bubuk') loadDashBubuk();
-                if(activeTab.id === 'planning-view') loadPlanningData();
-            }
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg;
-            t.classList.add('toast-active'); setTimeout(() => t.classList.remove('toast-active'), 3000);
-        }
-
-        async function loadDashBubuk() {
-            const loader = document.getElementById('loader'); loader.classList.add('active');
-            try {
-                const res = await fetchGAS({ action: 'getDashboardData', plant: currentPlant, viewType: 'weekly_bubuk' });
-                if(!res.error) renderBubuk10Weeks(res.data);
-                else console.error(res.error);
-            } catch(e) { /* Abaikan notif gagal agar tidak mengganggu jika pakai mode demo */ }
-            loader.classList.remove('active');
-        }
-
-        function renderBubuk10Weeks(data) {
-            if(!data || data.length < 2) return;
-            let htmlHead = `<tr><th class="product-col">PRODUK</th><th class="category-col">KATEGORI</th>`;
-            for(let w=1; w<=10; w++) htmlHead += `<th>W${w}</th>`;
-            htmlHead += `</tr>`;
-            document.getElementById('bubuk-dashboard-thead').innerHTML = htmlHead;
-
-            let bodyHtml = '';
-            for(let r=1; r<data.length && r < 50; r++) { 
-                bodyHtml += `<tr><td class="product-col text-xs">${data[r][0]||''}</td><td class="category-col text-xs">${data[r][1]||''}</td>`;
-                for(let w=1; w<=10; w++) bodyHtml += `<td class="text-xs text-slate-600">${data[r][w+1]||'-'}</td>`;
-                bodyHtml += `</tr>`;
-            }
-            document.getElementById('bubuk-dashboard-tbody').innerHTML = bodyHtml;
-        }
-
-        async function loadDashGiling() {
-            const loader = document.getElementById('loader'); loader.classList.add('active');
-            try {
-                const res = await fetchGAS({ action: 'getDashboardData', viewType: 'giling_raw' });
-                if(!res.error) { rawGilingData = res.data; applyGilingFilters(); }
-            } catch(e) { }
-            loader.classList.remove('active');
-        }
-
-        function applyGilingFilters() {
-            if(!rawGilingData || rawGilingData.length <= 1) return;
-            let sd = new Date(document.getElementById('giling-start-date').value || 0);
-            let ed = new Date(document.getElementById('giling-end-date').value || new Date()); ed.setHours(23,59,59);
-            let group = document.getElementById('giling-group-filter').value;
-
-            let filtered = [], grandTotal = 0, shifts = {1:0, 2:0, 3:0};
-            for(let i=1; i<rawGilingData.length; i++) {
-                let row = rawGilingData[i], d = new Date(row[0]);
-                if(d >= sd && d <= ed && (group==='All' || row[2]===group)) {
-                    filtered.push(row); let qty = parseFloat(row[7])||0; grandTotal+=qty;
-                    if(row[1]>=1 && row[1]<=3) shifts[row[1]]+=qty;
-                }
-            }
-            
-            document.getElementById('giling-grand-total').innerText = grandTotal.toLocaleString('id-ID');
-            document.getElementById('giling-shift1-total').innerText = shifts[1].toLocaleString('id-ID');
-            document.getElementById('giling-shift2-total').innerText = shifts[2].toLocaleString('id-ID');
-            document.getElementById('giling-shift3-total').innerText = shifts[3].toLocaleString('id-ID');
-
-            let html = filtered.map(r => `
-                <div class="record-item text-xs">
-                    <div><b>${new Date(r[0]).toLocaleDateString('id-ID')}</b><br><span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded">SH ${r[1]}</span></div>
-                    <div><b>${r[5]}</b></div>
-                    <div class="text-lg font-black text-slate-800">${(parseFloat(r[7])||0).toLocaleString('id-ID')}</div>
-                    <div>Grup ${r[2]}</div>
-                    <div class="bg-slate-50 p-2 rounded">${r[8]||'-'}</div>
-                </div>`).join('');
-            document.getElementById('giling-list-container').innerHTML = html || '<div class="p-8 text-center text-slate-500">Kosong</div>';
-        }
-
-        async function loadPlanningData() {
-            const loader = document.getElementById('loader'); loader.classList.add('active');
-            try {
-                const res = await fetchGAS({ action: 'getPlanningData', plant: currentPlant });
-                if(res.data) renderPlanning(res.data);
-            } catch(e) { }
-            loader.classList.remove('active');
-        }
-
-        function renderPlanning(data) {
-            if(!data || data.length === 0) return;
-            document.getElementById('planning-thead').innerHTML = `<tr><th>${data[0][0]}</th><th class="text-left">${data[0][1]}</th><th>${data[0][2]}</th></tr>`;
-            let body = '';
-            for(let r=1; r<data.length; r++) {
-                body += `<tr class="${data[r][0]?'border-t-2 border-slate-200':''}"><td class="font-bold">${data[r][0]}</td><td>${data[r][1]}</td><td class="text-right font-bold text-teal-700">${data[r][2]}</td></tr>`;
-            }
-            document.getElementById('planning-tbody').innerHTML = body;
-        }
-
-        function addGilingRow() {
-            if(gilingRowCount >= 5) return showToast("Maksimal 5 baris!");
-            gilingRowCount++;
-            const html = `
-                <div class="giling-row grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded border border-slate-200 text-xs mt-2">
-                    <div><label class="modern-label text-[10px]">Produk</label><input type="text" list="list-giling-products" class="g-prod modern-input py-1.5 bg-white" required></div>
-                    <div><label class="modern-label text-[10px]">Prod Date</label><input type="date" class="g-date modern-input py-1.5 bg-white" required></div>
-                    <div><label class="modern-label text-[10px]">Qty (KG)</label><input type="number" step="0.01" class="g-qty modern-input py-1.5 bg-white" required></div>
-                    <div><label class="modern-label text-[10px]">Catatan</label><input type="text" class="g-cat modern-input py-1.5 bg-white"></div>
-                </div>`;
-            document.getElementById('giling-rows-container').insertAdjacentHTML('beforeend', html);
-        }
-
-        async function submitGilingForm(e) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
-
-            let formData = { date: document.getElementById('giling-date').value, shift: document.getElementById('giling-shift').value, grup: document.getElementById('giling-grup').value, mppGiling: document.getElementById('giling-mpp').value, mppSortir: document.getElementById('giling-sortir').value, items: [] };
-            document.querySelectorAll('.giling-row').forEach(row => {
-                formData.items.push({ product: row.querySelector('.g-prod').value, prodDate: row.querySelector('.g-date').value, qty: row.querySelector('.g-qty').value, catatan: row.querySelector('.g-cat').value });
-            });
-
-            try {
-                const res = await fetchGAS({ action: 'saveGiling', formData: formData });
-                showToast(res.message || "Tersimpan");
-                e.target.reset(); document.getElementById('giling-rows-container').innerHTML = ''; gilingRowCount=0; addGilingRow();
-            } catch (err) { showToast("Gagal menyimpan ke server."); }
-            btn.innerHTML = 'Simpan Data'; btn.disabled = false;
-        }
+        // Panggil data saat pertama kali aplikasi dibuka
+        loadData();
     </script>
 </body>
 </html>
